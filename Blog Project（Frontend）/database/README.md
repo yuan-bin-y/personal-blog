@@ -6,6 +6,7 @@ MySQL 8.x database scripts generated from the frozen `docs/DATABASE_DESIGN.md` a
 
 - `01_schema.sql`：创建 `binspace` 数据库、表、外键、检查约束、唯一约束和索引。
 - `02_seed.sql`：写入当前前端已经存在的站点配置。
+- `03_visitor_accounts.sql`：允许 `space_user.role=VISITOR`，用于 Visitor 注册。
 
 ## Execution
 
@@ -14,9 +15,10 @@ MySQL 8.x database scripts generated from the frozen `docs/DATABASE_DESIGN.md` a
 ```bash
 mysql -u root -p < 01_schema.sql
 mysql -u root -p < 02_seed.sql
+mysql -u root -p < 03_visitor_accounts.sql
 ```
 
-也可以在 MySQL 客户端中依次 `SOURCE` 两个文件。
+也可以在 MySQL 客户端中依次 `SOURCE` 三个文件。
 
 要求：
 
@@ -60,13 +62,7 @@ mysql -u root -p < 02_seed.sql
 
 ## Authentication storage
 
-V1 使用 Spring Security + 服务端 Session + HttpOnly Cookie，不使用 JWT。
-
-本 Schema 不创建 Session、access token 或 refresh token 表。第一版按单实例容器 Session 运行；未来需要多实例时再引入 Spring Session 和共享存储。
-
-## CSRF
-
-前端通过 `GET /api/auth/csrf` 获取 Session 对应的 CSRF Token，并在登录及所有 POST/PUT/PATCH/DELETE 请求中使用 `X-CSRF-TOKEN` Header。Session Cookie 保持 HttpOnly。
+当前后端使用 Spring Security + Bearer JWT，并由 Redis 保存 Token 的有效登录状态；退出登录时撤销对应 Redis Token Session。MySQL 不保存 access token 或 refresh token。
 
 ## Content media boundary
 
@@ -77,7 +73,6 @@ V1 使用 Spring Security + 服务端 Session + HttpOnly Cookie，不使用 JWT�
 
 ## Re-running
 
-- 两个脚本使用 `IF NOT EXISTS` / `INSERT IGNORE`，可以在未变更结构的同一环境中重复执行。
+- `01_schema.sql` / `02_seed.sql` 使用 `IF NOT EXISTS` / `INSERT IGNORE`；`03_visitor_accounts.sql` 是已有数据库的一次性增量迁移，不要重复执行。
 - 这些文件不是迁移框架。已有表发生结构变更后，应新增版本化迁移脚本，不要依赖重新运行 `01_schema.sql` 修改旧表。
 - 正式执行前仍建议备份目标数据库。
-

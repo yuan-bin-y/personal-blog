@@ -57,9 +57,11 @@ class AuthControllerIntegrationTest {
         owner.setId(1909508401234567168L);
         owner.setUsername("owner");
         owner.setPasswordHash(new BCryptPasswordEncoder().encode(PASSWORD));
+        owner.setRole("OWNER");
         owner.setStatus("ACTIVE");
 
         when(spaceUserMapper.selectOne(any())).thenReturn(owner);
+        when(spaceUserMapper.insert(any(SpaceUser.class))).thenReturn(1);
 
         SpaceProfile profile = new SpaceProfile();
         profile.setId(1L);
@@ -68,6 +70,7 @@ class AuthControllerIntegrationTest {
         profile.setAvatarUrl("/media/avatar.jpg");
 
         when(spaceProfileMapper.selectByUserId(any())).thenReturn(profile);
+        when(spaceProfileMapper.insert(any(SpaceProfile.class))).thenReturn(1);
 
         // 模拟“Token 仍登记在 Redis 中”，使有效 JWT 通过 RedisTokenValidator。
         when(redisTokenSessionService.isActive(anyString(), anyString()))
@@ -108,6 +111,54 @@ class AuthControllerIntegrationTest {
                                 """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_FAILED"));
+    }
+
+    @Test
+    void registerVisitor_returnsCreatedTokenAndVisitorIdentity() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username":"Warm_Reader",
+                                  "password":"Reader_2026",
+                                  "displayName":"暖光访客"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.code").value("OK"))
+                .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.data.identity.authenticated").value(true))
+                .andExpect(jsonPath("$.data.identity.role").value("VISITOR"))
+                .andExpect(jsonPath("$.data.identity.user.username").value("warm_reader"))
+                .andExpect(jsonPath("$.data.identity.user.displayName").value("暖光访客"))
+                .andExpect(jsonPath("$.data.identity.permissions").isEmpty());
+    }
+
+    @Test
+    void registerVisitorWithExistingUsername_returnsConflict() throws Exception {
+        when(spaceUserMapper.selectCount(any())).thenReturn(1L);
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username":"owner",
+                                  "password":"Reader_2026",
+                                  "displayName":"重复用户"
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("RESOURCE_CONFLICT"));
+    }
+
+    @Test
+    void registeredVisitorCannotAccessOwnerApi() throws Exception {
+        String token = registerVisitorAndGetToken();
+
+        mockMvc.perform(get("/api/owner/posts")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
 
     @Test
@@ -164,6 +215,27 @@ class AuthControllerIntegrationTest {
                                 {"username":"owner","password":"%s"}
                                 """.formatted(PASSWORD)))
                 .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        return com.jayway.jsonpath.JsonPath.read(
+                body,
+                "$.data.accessToken"
+        );
+    }
+
+    private String registerVisitorAndGetToken() throws Exception {
+        String body = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username":"warm_reader",
+                                  "password":"Reader_2026",
+                                  "displayName":"暖光访客"
+                                }
+                                """))
+                .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();

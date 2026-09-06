@@ -1,8 +1,8 @@
 package com.byy.blogprojectbackend.auth.token;
 
-import com.byy.blogprojectbackend.auth.principal.OwnerPrincipal;
-import com.byy.blogprojectbackend.common.constant.AuthorityConstants;
+import com.byy.blogprojectbackend.auth.principal.SpaceUserPrincipal;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,6 +22,7 @@ import java.util.UUID;
 public class JwtTokenService {
 
     public static final String CLAIM_USER_ID = "uid";
+    public static final String CLAIM_ROLE = "role";
     public static final String CLAIM_AUTHORITIES = "authorities";
 
     private final JwtEncoder jwtEncoder;
@@ -52,15 +52,18 @@ public class JwtTokenService {
     }
 
     /** 签发 access token，并用相同 TTL 将其 JTI 登记到 Redis。 */
-    public IssuedAccessToken issue(OwnerPrincipal principal) {
+    public IssuedAccessToken issue(
+            SpaceUserPrincipal principal
+    ) {
         Instant issuedAt = clock.instant();
         Duration ttl = jwtProperties.accessTokenTtl();
         Instant expiresAt = issuedAt.plus(ttl);
         String tokenId = UUID.randomUUID().toString();
 
-        List<String> authorities = new ArrayList<>();
-        authorities.add(AuthorityConstants.ROLE_OWNER);
-        authorities.addAll(principal.getPermissionNames());
+        List<String> authorities = principal.getAuthorities()
+                .stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList();
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer(jwtProperties.issuer())
@@ -69,7 +72,8 @@ public class JwtTokenService {
                 .expiresAt(expiresAt)
                 .id(tokenId)
                 .claim(CLAIM_USER_ID, principal.getId().toString())
-                .claim(CLAIM_AUTHORITIES, List.copyOf(authorities))
+                .claim(CLAIM_ROLE, principal.getRole())
+                .claim(CLAIM_AUTHORITIES, authorities)
                 .build();
 
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256)

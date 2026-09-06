@@ -112,7 +112,7 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.FORBIDDEN)
                 .body(Result.failure(
                         ApiErrorCode.FORBIDDEN,
-                        "Owner 账号当前不可用"
+                        "账号当前不可用"
                 ));
     }
 

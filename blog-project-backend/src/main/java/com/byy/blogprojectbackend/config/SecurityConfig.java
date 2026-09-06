@@ -2,7 +2,7 @@ package com.byy.blogprojectbackend.config;
 
 import com.byy.blogprojectbackend.auth.handler.RestAccessDeniedHandler;
 import com.byy.blogprojectbackend.auth.handler.RestAuthenticationEntryPoint;
-import com.byy.blogprojectbackend.auth.principal.OwnerUserDetailsService;
+import com.byy.blogprojectbackend.auth.principal.SpaceUserDetailsService;
 import com.byy.blogprojectbackend.common.constant.AuthorityConstants;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,7 +24,7 @@ import org.springframework.security.web.SecurityFilterChain;
  * BinSpace V1 安全配置。
  *
  * <p>
- * OWNER 通过用户名密码登录并取得 JWT，
+ * Visitor 或 Owner 通过用户名密码登录并取得 JWT，
  * 后续请求使用 Authorization: Bearer Token。
  * 服务端不创建登录 Session；
  * JWT 还必须通过 Redis 有效会话校验。
@@ -34,7 +34,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     /**
-     * 定义公开接口、OWNER 接口和无状态 Bearer JWT 认证。
+     * 定义公开接口、登录用户接口、OWNER 接口和无状态 Bearer JWT 认证。
      */
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -95,23 +95,24 @@ public class SecurityConfig {
                                 HttpMethod.POST,
                                 "/api/auth/logout"
                         )
-                        .hasRole("OWNER")
+                        .authenticated()
 
 
                         // =========================
                         // Visitor / Public 接口
                         // =========================
 
-                        // 登录接口。
+                        // 注册和登录接口。
                         .requestMatchers(
                                 HttpMethod.POST,
-                                "/api/auth/login"
+                                "/api/auth/login",
+                                "/api/auth/register"
                         )
                         .permitAll()
 
                         // 获取当前身份：
                         // 未登录返回 Visitor，
-                        // 已登录返回 Owner。
+                        // 已登录返回其真实 Visitor/Owner 身份。
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/auth/me"
@@ -213,13 +214,13 @@ public class SecurityConfig {
      */
     @Bean
     public AuthenticationManager authenticationManager(
-            OwnerUserDetailsService ownerUserDetailsService,
+            SpaceUserDetailsService spaceUserDetailsService,
             PasswordEncoder passwordEncoder
     ) {
 
         DaoAuthenticationProvider authenticationProvider =
                 new DaoAuthenticationProvider(
-                        ownerUserDetailsService
+                        spaceUserDetailsService
                 );
 
         authenticationProvider.setPasswordEncoder(

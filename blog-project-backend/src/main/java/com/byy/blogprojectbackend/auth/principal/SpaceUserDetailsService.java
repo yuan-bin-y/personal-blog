@@ -9,20 +9,20 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 /**
- * Spring Security 的 OWNER 账号加载器。
+ * Spring Security 的 BinSpace 账号加载器。
  *
- * <p>认证时按用户名读取 {@code space_user}，再转换为 {@link OwnerPrincipal}。</p>
+ * <p>认证时按用户名读取 {@code space_user}，再转换为 {@link SpaceUserPrincipal}。</p>
  */
 @Service
-public class OwnerUserDetailsService implements UserDetailsService {
+public class SpaceUserDetailsService implements UserDetailsService {
 
     private final SpaceUserMapper spaceUserMapper;
 
-    public OwnerUserDetailsService(SpaceUserMapper spaceUserMapper) {
+    public SpaceUserDetailsService(SpaceUserMapper spaceUserMapper) {
         this.spaceUserMapper = spaceUserMapper;
     }
 
-    /** 按用户名读取未逻辑删除的 OWNER；MyBatis-Plus 会自动附加 deleted=0。 */
+    /** 按用户名读取未逻辑删除账号；MyBatis-Plus 会自动附加 deleted=0。 */
     @Override
     public UserDetails loadUserByUsername(String username)
             throws UsernameNotFoundException {
@@ -36,10 +36,11 @@ public class OwnerUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("用户名或密码错误");
         }
 
-        return new OwnerPrincipal(
+        return new SpaceUserPrincipal(
                 user.getId(),
                 user.getUsername(),
                 user.getPasswordHash(),
+                user.getRole(),
                 user.getStatus()
         );
     }

@@ -9,20 +9,23 @@
     <select id="selectOwnerProfile"
             resultType="com.byy.blogprojectbackend.profile.entity.SpaceProfile">
         SELECT
-        id,
-        user_id,
-        display_name,
-        avatar_url,
-        role_text,
-        bio,
-        status_label,
-        status_text,
-        status_emoji,
-        created_at,
-        updated_at,
-        version
-        FROM profile
-        ORDER BY id
+        p.id,
+        p.user_id,
+        p.display_name,
+        p.avatar_url,
+        p.role_text,
+        p.bio,
+        p.status_label,
+        p.status_text,
+        p.status_emoji,
+        p.created_at,
+        p.updated_at,
+        p.version
+        FROM profile p
+        INNER JOIN space_user u ON u.id = p.user_id
+        WHERE u.role = 'OWNER'
+        AND u.deleted = 0
+        ORDER BY p.id
         LIMIT 1
     </select>
 

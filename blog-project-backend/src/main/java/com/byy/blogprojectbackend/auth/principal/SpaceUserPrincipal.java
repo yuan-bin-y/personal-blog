@@ -11,26 +11,30 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Spring Security 保存的 OWNER 登录主体。
+ * BinSpace 通用登录主体。
  *
- * <p>它只携带认证和授权所需信息，不直接暴露数据库 Entity，也不作为 API 响应。</p>
+ * 同时支持 VISITOR 和 OWNER，但不直接作为接口响应。
  */
-public class OwnerPrincipal implements UserDetails, CredentialsContainer {
+public class SpaceUserPrincipal
+        implements UserDetails, CredentialsContainer {
 
     private final Long id;
     private final String username;
     private String passwordHash;
+    private final String role;
     private final String status;
 
-    public OwnerPrincipal(
+    public SpaceUserPrincipal(
             Long id,
             String username,
             String passwordHash,
+            String role,
             String status
     ) {
         this.id = id;
         this.username = username;
         this.passwordHash = passwordHash;
+        this.role = role;
         this.status = status;
     }
 
@@ -38,21 +42,41 @@ public class OwnerPrincipal implements UserDetails, CredentialsContainer {
         return id;
     }
 
+    public String getRole() {
+        return role;
+    }
+
     public List<String> getPermissionNames() {
-        return AuthorityConstants.OWNER_PERMISSIONS;
+        if (AuthorityConstants.ROLE_CODE_OWNER.equals(role)) {
+            return AuthorityConstants.OWNER_PERMISSIONS;
+        }
+
+        return List.of();
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         List<GrantedAuthority> authorities = new ArrayList<>();
 
-        authorities.add(
-                new SimpleGrantedAuthority(AuthorityConstants.ROLE_OWNER)
-        );
+        if (AuthorityConstants.ROLE_CODE_OWNER.equals(role)) {
+            authorities.add(
+                    new SimpleGrantedAuthority(
+                            AuthorityConstants.ROLE_OWNER
+                    )
+            );
 
-        AuthorityConstants.OWNER_PERMISSIONS.stream()
-                .map(SimpleGrantedAuthority::new)
-                .forEach(authorities::add);
+            AuthorityConstants.OWNER_PERMISSIONS.stream()
+                    .map(SimpleGrantedAuthority::new)
+                    .forEach(authorities::add);
+        } else if (AuthorityConstants.ROLE_CODE_VISITOR.equals(role)) {
+            authorities.add(
+                    new SimpleGrantedAuthority(
+                            AuthorityConstants.ROLE_VISITOR
+                    )
+            );
+        } else {
+            throw new IllegalStateException("Unsupported user role: " + role);
+        }
 
         return List.copyOf(authorities);
     }
@@ -87,9 +111,8 @@ public class OwnerPrincipal implements UserDetails, CredentialsContainer {
         return "ACTIVE".equals(status);
     }
 
-    /** 认证完成后清除内存中的密码哈希。 */
     @Override
     public void eraseCredentials() {
-        this.passwordHash = null;
+        passwordHash = null;
     }
 }

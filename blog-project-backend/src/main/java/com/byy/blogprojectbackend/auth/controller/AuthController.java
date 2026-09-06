@@ -1,6 +1,7 @@
 package com.byy.blogprojectbackend.auth.controller;
 
 import com.byy.blogprojectbackend.auth.dto.OwnerLoginDTO;
+import com.byy.blogprojectbackend.auth.dto.RegisterVisitorDTO;
 import com.byy.blogprojectbackend.auth.service.AuthService;
 import com.byy.blogprojectbackend.auth.vo.IdentityVO;
 import com.byy.blogprojectbackend.auth.vo.OwnerLoginVO;
@@ -8,6 +9,7 @@ import com.byy.blogprojectbackend.common.result.Result;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -30,7 +32,17 @@ public class AuthController {
 
     private final AuthService authService;
 
-    /** 使用用户名和密码登录 OWNER，返回 JWT Access Token 与当前身份。 */
+    /** 注册 Visitor，并直接返回 JWT Access Token 与当前身份。 */
+    @PostMapping("/register")
+    public ResponseEntity<Result<OwnerLoginVO>> registerVisitor(
+            @Valid @RequestBody RegisterVisitorDTO registerDTO
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(Result.success(authService.registerVisitor(registerDTO)));
+    }
+
+    /** 使用用户名和密码登录 Visitor 或 Owner，返回 JWT 与当前身份。 */
     @PostMapping("/login")
     public Result<OwnerLoginVO> login(
             @Valid @RequestBody OwnerLoginDTO loginDTO
@@ -53,7 +65,7 @@ public class AuthController {
 
         if (authentication.getPrincipal() instanceof Jwt jwt) {
             return Result.success(
-                    authService.getOwnerIdentity(jwt)
+                    authService.getIdentity(jwt)
             );
         }
 

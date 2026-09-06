@@ -15,8 +15,13 @@ public final class AuthorityConstants {
     private AuthorityConstants() {
     }
 
-    /** Spring Security 角色必须使用 ROLE_ 前缀。 */
-    public static final String ROLE_OWNER = "ROLE_OWNER";
+    /** 数据库和 API 使用的不带前缀角色编码。 */
+    public static final String ROLE_CODE_OWNER = "OWNER";
+    public static final String ROLE_CODE_VISITOR = "VISITOR";
+
+    /** Spring Security GrantedAuthority 使用的带 ROLE_ 前缀角色。 */
+    public static final String ROLE_OWNER = "ROLE_" + ROLE_CODE_OWNER;
+    public static final String ROLE_VISITOR = "ROLE_" + ROLE_CODE_VISITOR;
 
     /**
      * 权限定义。
