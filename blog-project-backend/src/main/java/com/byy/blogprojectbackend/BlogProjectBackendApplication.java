@@ -2,7 +2,7 @@ package com.byy.blogprojectbackend;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-//byy
+//byybyy
 /** BinSpace 后端应用入口。 */
 @SpringBootApplication
 public class BlogProjectBackendApplication {
