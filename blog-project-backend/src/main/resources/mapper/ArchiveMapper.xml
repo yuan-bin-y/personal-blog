@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.byy.blogprojectbackend.archive.mapper.ArchiveMapper">
+
+    <!-- 统计公开归档内容 -->
+    <select id="countPublicArchive" resultType="long">
+        SELECT COUNT(*)
+        FROM post p
+        WHERE p.deleted = 0
+        AND p.status = 'PUBLISHED'
+        AND p.published_at IS NOT NULL
+        AND p.published_at &lt;= UTC_TIMESTAMP(3)
+        AND (
+            #{type} = 'ALL'
+            OR p.type = #{type}
+        )
+
+        <if test="year != null">
+            AND YEAR(p.published_at) = #{year}
+        </if>
+    </select>
+
+    <!-- 分页查询归档；不读取 Tag、Media 和完整文章正文 -->
+    <select id="selectPublicArchive"
+            resultType="com.byy.blogprojectbackend.archive.mapper.projection.ArchiveRow">
+        SELECT
+        p.id,
+        p.type,
+        p.slug,
+        CASE
+            WHEN p.type = 'TECH' THEN p.title
+            WHEN CHAR_LENGTH(p.content) &gt; 60
+                THEN CONCAT(LEFT(p.content, 60), '…')
+            ELSE p.content
+        END AS label,
+        p.published_at AS publishedAt
+
+        FROM post p
+        WHERE p.deleted = 0
+        AND p.status = 'PUBLISHED'
+        AND p.published_at IS NOT NULL
+        AND p.published_at &lt;= UTC_TIMESTAMP(3)
+        AND (
+            #{type} = 'ALL'
+            OR p.type = #{type}
+        )
+
+        <if test="year != null">
+            AND YEAR(p.published_at) = #{year}
+        </if>
+
+        ORDER BY
+        p.published_at DESC,
+        p.id DESC
+
+        LIMIT #{pageSize}
+        OFFSET #{offset}
+    </select>
+
+</mapper>

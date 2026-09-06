@@ -1,0 +1,76 @@
+:root {
+  color-scheme: light;
+  --color-canvas: #f4f3f1;
+  --color-surface: #fcfbf9;
+  --color-surface-soft: #e8edf1;
+  --color-surface-blush: #eee8ec;
+  --color-surface-dark: #252d36;
+  --color-text-primary: #293038;
+  --color-text-secondary: #5f6872;
+  --color-text-inverse: #f9fafb;
+  --color-accent: #4d6f8d;
+  --color-accent-hover: #3e5c76;
+  --color-accent-pressed: #30475c;
+  --color-accent-soft: #dce7f0;
+  --color-apricot: #8b9fa8;
+  --color-border: #d9dee2;
+  --color-border-strong: #b9c2c9;
+  --color-focus-ring: #336f9f;
+  --color-selection: #c8dceb;
+  --color-success: #477a5a;
+  --color-warning: #9a641e;
+  --color-error: #b33f39;
+  --font-sans: 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+  --font-serif: 'Noto Serif SC', 'Songti SC', SimSun, serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  --font-size-display: clamp(2.75rem, 6vw, 5.5rem);
+  --font-size-h1: clamp(2rem, 4vw, 2.75rem);
+  --font-size-h2: clamp(1.625rem, 3vw, 2rem);
+  --font-size-h3: clamp(1.25rem, 2vw, 1.375rem);
+  --font-size-body: 1rem;
+  --font-size-meta: 0.875rem;
+  --font-size-eyebrow: 0.75rem;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+  --shadow-1: 0 8px 24px rgba(37, 45, 54, 0.06);
+  --shadow-2: 0 18px 48px rgba(37, 45, 54, 0.12);
+  --duration-fast: 160ms;
+  --duration-normal: 180ms;
+  --duration-slow: 320ms;
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --container-max: 1200px;
+  --page-gutter: 32px;
+  --navbar-height: 72px;
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 30;
+  --z-overlay: 50;
+  --z-modal: 70;
+  --z-toast: 90;
+}
+
+@media (max-width: 1179px) {
+  :root { --page-gutter: 24px; }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --page-gutter: 16px;
+    --navbar-height: 64px;
+  }
+}

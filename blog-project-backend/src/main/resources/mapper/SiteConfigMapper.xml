@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.byy.blogprojectbackend.site.mapper.SiteConfigMapper">
+
+    <!-- 查询全站唯一的 PRIMARY 配置 -->
+    <select id="selectPrimary"
+            resultType="com.byy.blogprojectbackend.site.entity.SiteConfig">
+        SELECT *
+        FROM site_config
+        WHERE singleton_key = 'PRIMARY'
+        LIMIT 1
+    </select>
+
+    <!-- 使用乐观锁更新空间基本信息 -->
+    <update id="updateSiteBasic">
+        UPDATE site_config
+        SET site_name = #{siteConfig.siteName},
+        site_chinese_name = #{siteConfig.siteChineseName},
+        site_description = #{siteConfig.siteDescription},
+        updated_by = #{ownerId},
+        updated_at = UTC_TIMESTAMP(3),
+        version = version + 1
+        WHERE id = #{siteConfig.id}
+        AND singleton_key = 'PRIMARY'
+        AND version = #{version}
+    </update>
+
+    <!-- 使用乐观锁更新 Hero 配置 -->
+    <update id="updateHero">
+        UPDATE site_config
+        SET hero_eyebrow = #{siteConfig.heroEyebrow},
+        hero_title = #{siteConfig.heroTitle},
+        hero_subtitle = #{siteConfig.heroSubtitle},
+        hero_desktop_video_url = #{siteConfig.heroDesktopVideoUrl},
+        hero_mobile_video_url = #{siteConfig.heroMobileVideoUrl},
+        hero_poster_url = #{siteConfig.heroPosterUrl},
+        updated_by = #{ownerId},
+        updated_at = UTC_TIMESTAMP(3),
+        version = version + 1
+        WHERE id = #{siteConfig.id}
+        AND singleton_key = 'PRIMARY'
+        AND version = #{version}
+    </update>
+    <!-- 使用乐观锁更新空间公告 -->
+    <update id="updateAnnouncement">
+        UPDATE site_config
+        SET announcement_content = #{siteConfig.announcementContent},
+        announcement_enabled = #{siteConfig.announcementEnabled},
+        updated_by = #{ownerId},
+        updated_at = UTC_TIMESTAMP(3),
+        version = version + 1
+        WHERE id = #{siteConfig.id}
+        AND singleton_key = 'PRIMARY'
+        AND version = #{version}
+    </update>
+
+    <!-- 使用乐观锁更新空间音乐 -->
+    <update id="updateMusic">
+        UPDATE site_config
+        SET music_title = #{siteConfig.musicTitle},
+        music_artist = #{siteConfig.musicArtist},
+        music_audio_url = #{siteConfig.musicAudioUrl},
+        music_cover_url = #{siteConfig.musicCoverUrl},
+        updated_by = #{ownerId},
+        updated_at = UTC_TIMESTAMP(3),
+        version = version + 1
+        WHERE id = #{siteConfig.id}
+        AND singleton_key = 'PRIMARY'
+        AND version = #{version}
+    </update>
+
+    <!-- 使用乐观锁更新默认空间外观 JSON -->
+    <update id="updateAppearance">
+        UPDATE site_config
+        SET appearance_json = #{siteConfig.appearanceJson},
+        updated_by = #{ownerId},
+        updated_at = UTC_TIMESTAMP(3),
+        version = version + 1
+        WHERE id = #{siteConfig.id}
+        AND singleton_key = 'PRIMARY'
+        AND version = #{version}
+    </update>
+
+    <!-- 使用乐观锁更新页面媒体配置 JSON -->
+    <update id="updatePageMedia">
+        UPDATE site_config
+        SET page_media_json = #{siteConfig.pageMediaJson},
+        updated_by = #{ownerId},
+        updated_at = UTC_TIMESTAMP(3),
+        version = version + 1
+        WHERE id = #{siteConfig.id}
+        AND singleton_key = 'PRIMARY'
+        AND version = #{version}
+    </update>
+
+</mapper>

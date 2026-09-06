@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.byy.blogprojectbackend.profile.mapper.SpaceProfileMapper">
+
+    <!-- 查询当前空间唯一的 Owner Profile -->
+    <select id="selectOwnerProfile"
+            resultType="com.byy.blogprojectbackend.profile.entity.SpaceProfile">
+        SELECT
+        id,
+        user_id,
+        display_name,
+        avatar_url,
+        role_text,
+        bio,
+        status_label,
+        status_text,
+        status_emoji,
+        created_at,
+        updated_at,
+        version
+        FROM profile
+        ORDER BY id
+        LIMIT 1
+    </select>
+
+    <!-- 根据登录用户 ID 查询 Profile -->
+    <select id="selectByUserId"
+            resultType="com.byy.blogprojectbackend.profile.entity.SpaceProfile">
+        SELECT
+        id,
+        user_id,
+        display_name,
+        avatar_url,
+        role_text,
+        bio,
+        status_label,
+        status_text,
+        status_emoji,
+        created_at,
+        updated_at,
+        version
+        FROM profile
+        WHERE user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <!-- 使用乐观锁更新 Owner Profile -->
+    <update id="updateOwnerProfile">
+        UPDATE profile
+        SET display_name = #{profile.displayName},
+        avatar_url = #{profile.avatarUrl},
+        role_text = #{profile.roleText},
+        bio = #{profile.bio},
+        status_label = #{profile.statusLabel},
+        status_text = #{profile.statusText},
+        status_emoji = #{profile.statusEmoji},
+        version = version + 1
+        WHERE id = #{profile.id}
+        AND version = #{version}
+    </update>
+
+</mapper>

@@ -1,0 +1,20 @@
+# 复制为 config/application-local.yaml 后填写真实值。
+# application-local.yaml 已被 .gitignore 忽略，请勿提交真实密钥。
+spring:
+  datasource:
+    password: CHANGE_ME_MYSQL_PASSWORD
+  data:
+    redis:
+      # 本地 Redis 没有密码时保留空字符串。
+      password: ""
+
+app:
+  security:
+    jwt:
+      # 填入 Base64 编码、解码后至少 32 字节的随机密钥。
+      secret-base64: CHANGE_ME_BASE64_SECRET
+
+# 将来接入第三方服务时，API Key 也只放在本地文件或环境变量中，例如：
+# integrations:
+#   provider:
+#     api-key: ${PROVIDER_API_KEY:CHANGE_ME_LOCAL_ONLY}

@@ -1,0 +1,28 @@
+package com.byy.blogprojectbackend.common.result;
+
+import lombok.Getter;
+
+/**
+ * V1 API 统一错误码。
+ */
+@Getter
+public enum ApiErrorCode {
+
+    BAD_REQUEST("请求参数错误"),
+    AUTH_REQUIRED("请先登录"),
+    AUTH_FAILED("用户名或密码错误"),
+    FORBIDDEN("无权限访问"),
+    RESOURCE_NOT_FOUND("资源不存在"),
+    VERSION_CONFLICT("数据版本冲突"),
+    RESOURCE_CONFLICT("资源冲突"),
+    INTERNAL_ERROR("服务器内部错误");
+
+    /**
+     * 对应的中文错误信息。
+     */
+    private final String message;
+
+    ApiErrorCode(String message) {
+        this.message = message;
+    }
+}

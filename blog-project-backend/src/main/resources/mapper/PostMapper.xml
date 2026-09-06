@@ -1,0 +1,451 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.byy.blogprojectbackend.post.mapper.PostMapper">
+
+    <select id="countPublishedByType"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM post
+        WHERE type = #{type}
+        AND status = 'PUBLISHED'
+        AND deleted = 0
+        AND published_at &lt;= UTC_TIMESTAMP()
+    </select>
+
+    <!-- 统计公开首页 Feed -->
+    <select id="countPublicFeed" resultType="long">
+        SELECT COUNT(*)
+        FROM post p
+        LEFT JOIN category c
+        ON c.id = p.category_id
+        WHERE p.deleted = 0
+        AND p.status = 'PUBLISHED'
+        AND p.published_at IS NOT NULL
+        AND p.published_at &lt;= UTC_TIMESTAMP(3)
+        AND (
+        #{type} = 'ALL'
+        OR p.type = #{type}
+        )
+
+        <!-- TECH 列表按仍启用的分类筛选 -->
+        <if test="categorySlug != null and categorySlug != ''">
+            AND c.slug = #{categorySlug}
+            AND c.deleted = 0
+        </if>
+
+        <!-- EXISTS 只做标签匹配，不把一对多标签行加入分页结果 -->
+        <if test="tagSlug != null and tagSlug != ''">
+            AND EXISTS (
+                SELECT 1
+                FROM post_tag pt_filter
+                INNER JOIN tag t_filter
+                ON t_filter.id = pt_filter.tag_id
+                WHERE pt_filter.post_id = p.id
+                AND t_filter.slug = #{tagSlug}
+                AND t_filter.deleted = 0
+            )
+        </if>
+    </select>
+
+    <!-- 查询公开首页 Feed 当前页 -->
+    <select id="selectPublicFeed"
+            resultType="com.byy.blogprojectbackend.post.mapper.projection.PostFeedRow">
+        SELECT
+        p.id,
+        p.type,
+        p.slug,
+        p.title,
+        p.summary,
+        p.content,
+        p.content_format AS contentFormat,
+
+        p.created_by AS authorUserId,
+        pf.display_name AS authorName,
+        pf.avatar_url AS authorAvatar,
+
+        c.id AS categoryId,
+        c.name AS categoryName,
+        c.slug AS categorySlug,
+        c.description AS categoryDescription,
+        c.deleted AS categoryDeleted,
+
+        p.created_at AS createdAt,
+        p.updated_at AS updatedAt,
+        p.published_at AS publishedAt,
+        p.reading_time_minutes AS readingTime,
+        p.status,
+        p.like_count AS likeCount,
+        p.comment_count AS commentCount
+
+        FROM post p
+
+        INNER JOIN profile pf
+        ON pf.user_id = p.created_by
+
+        LEFT JOIN category c
+        ON c.id = p.category_id
+
+        WHERE p.deleted = 0
+        AND p.status = 'PUBLISHED'
+        AND p.published_at IS NOT NULL
+        AND p.published_at &lt;= UTC_TIMESTAMP(3)
+        AND (
+        #{type} = 'ALL'
+        OR p.type = #{type}
+        )
+
+        <if test="categorySlug != null and categorySlug != ''">
+            AND c.slug = #{categorySlug}
+            AND c.deleted = 0
+        </if>
+
+        <if test="tagSlug != null and tagSlug != ''">
+            AND EXISTS (
+                SELECT 1
+                FROM post_tag pt_filter
+                INNER JOIN tag t_filter
+                ON t_filter.id = pt_filter.tag_id
+                WHERE pt_filter.post_id = p.id
+                AND t_filter.slug = #{tagSlug}
+                AND t_filter.deleted = 0
+            )
+        </if>
+
+        ORDER BY
+        p.published_at DESC,
+        p.id DESC
+
+        LIMIT #{pageSize}
+        OFFSET #{offset}
+    </select>
+
+    <!-- 根据 slug 查询一篇公开 TECH 的完整主体 -->
+    <select id="selectPublicTechBySlug"
+            resultType="com.byy.blogprojectbackend.post.mapper.projection.PostFeedRow">
+        SELECT
+        p.id,
+        p.type,
+        p.slug,
+        p.title,
+        p.summary,
+        p.content,
+        p.content_format AS contentFormat,
+
+        p.created_by AS authorUserId,
+        pf.display_name AS authorName,
+        pf.avatar_url AS authorAvatar,
+
+        c.id AS categoryId,
+        c.name AS categoryName,
+        c.slug AS categorySlug,
+        c.description AS categoryDescription,
+        c.deleted AS categoryDeleted,
+
+        p.created_at AS createdAt,
+        p.updated_at AS updatedAt,
+        p.published_at AS publishedAt,
+        p.reading_time_minutes AS readingTime,
+        p.status,
+        p.like_count AS likeCount,
+        p.comment_count AS commentCount
+
+        FROM post p
+        INNER JOIN profile pf
+        ON pf.user_id = p.created_by
+        LEFT JOIN category c
+        ON c.id = p.category_id
+
+        WHERE p.slug = #{slug}
+        AND p.type = 'TECH'
+        AND p.deleted = 0
+        AND p.status = 'PUBLISHED'
+        AND p.published_at IS NOT NULL
+        AND p.published_at &lt;= UTC_TIMESTAMP(3)
+        LIMIT 1
+    </select>
+
+    <!-- 同分类最新 TECH，用作详情页相关文章 -->
+    <select id="selectRelatedPublicTech"
+            resultType="com.byy.blogprojectbackend.post.mapper.projection.PostFeedRow">
+        SELECT
+        p.id,
+        p.type,
+        p.slug,
+        p.title,
+        p.summary,
+        NULL AS content,
+        p.content_format AS contentFormat,
+
+        p.created_by AS authorUserId,
+        pf.display_name AS authorName,
+        pf.avatar_url AS authorAvatar,
+
+        c.id AS categoryId,
+        c.name AS categoryName,
+        c.slug AS categorySlug,
+        c.description AS categoryDescription,
+        c.deleted AS categoryDeleted,
+
+        p.created_at AS createdAt,
+        p.updated_at AS updatedAt,
+        p.published_at AS publishedAt,
+        p.reading_time_minutes AS readingTime,
+        p.status,
+        p.like_count AS likeCount,
+        p.comment_count AS commentCount
+
+        FROM post p
+        INNER JOIN profile pf
+        ON pf.user_id = p.created_by
+        LEFT JOIN category c
+        ON c.id = p.category_id
+
+        WHERE p.type = 'TECH'
+        AND p.category_id = #{categoryId}
+        AND p.id != #{postId}
+        AND p.deleted = 0
+        AND p.status = 'PUBLISHED'
+        AND p.published_at IS NOT NULL
+        AND p.published_at &lt;= UTC_TIMESTAMP(3)
+
+        ORDER BY
+        p.published_at DESC,
+        p.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 统计指定年月的公开 MOMENT -->
+    <select id="countPublicMoments" resultType="long">
+        SELECT COUNT(*)
+        FROM post p
+        WHERE p.type = 'MOMENT'
+        AND p.deleted = 0
+        AND p.status = 'PUBLISHED'
+        AND p.published_at IS NOT NULL
+        AND p.published_at &lt;= UTC_TIMESTAMP(3)
+
+        <if test="year != null">
+            AND YEAR(p.published_at) = #{year}
+        </if>
+
+        <if test="month != null">
+            AND MONTH(p.published_at) = #{month}
+        </if>
+    </select>
+
+    <!-- 分页查询指定年月的公开 MOMENT -->
+    <select id="selectPublicMoments"
+            resultType="com.byy.blogprojectbackend.post.mapper.projection.PostFeedRow">
+        SELECT
+        p.id,
+        p.type,
+        p.slug,
+        p.title,
+        p.summary,
+        p.content,
+        p.content_format AS contentFormat,
+
+        p.created_by AS authorUserId,
+        pf.display_name AS authorName,
+        pf.avatar_url AS authorAvatar,
+
+        NULL AS categoryId,
+        NULL AS categoryName,
+        NULL AS categorySlug,
+        NULL AS categoryDescription,
+        NULL AS categoryDeleted,
+
+        p.created_at AS createdAt,
+        p.updated_at AS updatedAt,
+        p.published_at AS publishedAt,
+        p.reading_time_minutes AS readingTime,
+        p.status,
+        p.like_count AS likeCount,
+        p.comment_count AS commentCount
+
+        FROM post p
+        INNER JOIN profile pf
+        ON pf.user_id = p.created_by
+
+        WHERE p.type = 'MOMENT'
+        AND p.deleted = 0
+        AND p.status = 'PUBLISHED'
+        AND p.published_at IS NOT NULL
+        AND p.published_at &lt;= UTC_TIMESTAMP(3)
+
+        <if test="year != null">
+            AND YEAR(p.published_at) = #{year}
+        </if>
+
+        <if test="month != null">
+            AND MONTH(p.published_at) = #{month}
+        </if>
+
+        ORDER BY
+        p.published_at DESC,
+        p.id DESC
+
+        LIMIT #{pageSize}
+        OFFSET #{offset}
+    </select>
+
+    <!-- 根据 ID 查询一条公开 MOMENT 的完整主体 -->
+    <select id="selectPublicMomentById"
+            resultType="com.byy.blogprojectbackend.post.mapper.projection.PostFeedRow">
+        SELECT
+        p.id,
+        p.type,
+        p.slug,
+        p.title,
+        p.summary,
+        p.content,
+        p.content_format AS contentFormat,
+
+        p.created_by AS authorUserId,
+        pf.display_name AS authorName,
+        pf.avatar_url AS authorAvatar,
+
+        NULL AS categoryId,
+        NULL AS categoryName,
+        NULL AS categorySlug,
+        NULL AS categoryDescription,
+        NULL AS categoryDeleted,
+
+        p.created_at AS createdAt,
+        p.updated_at AS updatedAt,
+        p.published_at AS publishedAt,
+        p.reading_time_minutes AS readingTime,
+        p.status,
+        p.like_count AS likeCount,
+        p.comment_count AS commentCount
+
+        FROM post p
+        INNER JOIN profile pf
+        ON pf.user_id = p.created_by
+
+        WHERE p.id = #{id}
+        AND p.type = 'MOMENT'
+        AND p.deleted = 0
+        AND p.status = 'PUBLISHED'
+        AND p.published_at IS NOT NULL
+        AND p.published_at &lt;= UTC_TIMESTAMP(3)
+        LIMIT 1
+    </select>
+
+    <!-- 批量查询标签；不排除已逻辑删除标签 -->
+    <select id="selectTagsByPostIds"
+            resultType="com.byy.blogprojectbackend.post.mapper.projection.PostTagRow">
+        SELECT
+        pt.post_id AS postId,
+        t.id AS tagId,
+        t.name AS tagName,
+        t.slug AS tagSlug,
+        t.deleted AS tagDeleted
+
+        FROM post_tag pt
+
+        INNER JOIN tag t
+        ON t.id = pt.tag_id
+
+        WHERE pt.post_id IN
+        <foreach
+                collection="postIds"
+                item="postId"
+                open="("
+                separator=","
+                close=")">
+            #{postId}
+        </foreach>
+
+        ORDER BY
+        pt.post_id,
+        t.name,
+        t.id
+    </select>
+
+    <!-- 批量查询未删除媒体 -->
+    <select id="selectMediaByPostIds"
+            resultType="com.byy.blogprojectbackend.post.mapper.projection.PostMediaRow">
+        SELECT
+        pm.post_id AS postId,
+        pm.id,
+        pm.usage_type AS usageType,
+        pm.media_type AS mediaType,
+        pm.url,
+        pm.poster_url AS posterUrl,
+        pm.alt_text AS altText,
+        pm.width,
+        pm.height,
+        pm.sort_order AS sortOrder
+
+        FROM post_media pm
+
+        WHERE pm.deleted = 0
+        AND pm.post_id IN
+        <foreach
+                collection="postIds"
+                item="postId"
+                open="("
+                separator=","
+                close=")">
+            #{postId}
+        </foreach>
+
+        ORDER BY
+        pm.post_id,
+        pm.sort_order,
+        pm.id
+    </select>
+    <!-- Owner 管理列表可读取草稿，并返回乐观锁 version。 -->
+    <select id="countOwnerPosts" resultType="long">
+        SELECT COUNT(*) FROM post p WHERE p.deleted=0
+        AND (#{type}='ALL' OR p.type=#{type})
+        AND (#{status}='ALL' OR p.status=#{status})
+    </select>
+
+    <select id="selectOwnerPosts" resultType="com.byy.blogprojectbackend.post.mapper.projection.PostFeedRow">
+        SELECT p.id,p.type,p.slug,p.title,p.summary,p.content,p.content_format AS contentFormat,
+        p.created_by AS authorUserId,pf.display_name AS authorName,pf.avatar_url AS authorAvatar,
+        c.id AS categoryId,c.name AS categoryName,c.slug AS categorySlug,c.description AS categoryDescription,c.deleted AS categoryDeleted,
+        p.created_at AS createdAt,p.updated_at AS updatedAt,p.published_at AS publishedAt,
+        p.reading_time_minutes AS readingTime,p.status,p.like_count AS likeCount,p.comment_count AS commentCount,p.version
+        FROM post p INNER JOIN profile pf ON pf.user_id=p.created_by LEFT JOIN category c ON c.id=p.category_id
+        WHERE p.deleted=0 AND (#{type}='ALL' OR p.type=#{type}) AND (#{status}='ALL' OR p.status=#{status})
+        ORDER BY p.updated_at DESC,p.id DESC LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="selectOwnerPostById" resultType="com.byy.blogprojectbackend.post.mapper.projection.PostFeedRow">
+        SELECT p.id,p.type,p.slug,p.title,p.summary,p.content,p.content_format AS contentFormat,
+        p.created_by AS authorUserId,pf.display_name AS authorName,pf.avatar_url AS authorAvatar,
+        c.id AS categoryId,c.name AS categoryName,c.slug AS categorySlug,c.description AS categoryDescription,c.deleted AS categoryDeleted,
+        p.created_at AS createdAt,p.updated_at AS updatedAt,p.published_at AS publishedAt,
+        p.reading_time_minutes AS readingTime,p.status,p.like_count AS likeCount,p.comment_count AS commentCount,p.version
+        FROM post p INNER JOIN profile pf ON pf.user_id=p.created_by LEFT JOIN category c ON c.id=p.category_id
+        WHERE p.id=#{id} AND p.type=#{type} AND p.deleted=0 LIMIT 1
+    </select>
+
+    <update id="updateOwnerPost">
+        UPDATE post SET title=#{post.title},summary=#{post.summary},content=#{post.content},
+        content_format=#{post.contentFormat},category_id=#{post.categoryId},reading_time_minutes=#{post.readingTimeMinutes},
+        status=#{post.status},published_at=#{post.publishedAt},updated_by=#{post.updatedBy},version=version+1
+        WHERE id=#{post.id} AND type=#{post.type} AND deleted=0 AND version=#{version}
+    </update>
+
+    <update id="softDeleteOwnerPost">
+        UPDATE post SET deleted=1,deleted_at=UTC_TIMESTAMP(3),deleted_by=#{ownerId},updated_by=#{ownerId},version=version+1
+        WHERE id=#{id} AND type=#{type} AND deleted=0 AND version=#{version}
+    </update>
+
+    <select id="countActiveCategory" resultType="int">SELECT COUNT(*) FROM category WHERE id=#{id} AND deleted=0</select>
+    <select id="countActiveTags" resultType="int">SELECT COUNT(*) FROM tag WHERE deleted=0 AND id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach></select>
+    <delete id="deletePostTags">DELETE FROM post_tag WHERE post_id=#{postId}</delete>
+    <insert id="insertPostTag">INSERT INTO post_tag(post_id,tag_id) VALUES(#{postId},#{tagId})</insert>
+    <update id="softDeletePostMedia">UPDATE post_media SET deleted=1,deleted_at=UTC_TIMESTAMP(3) WHERE post_id=#{postId} AND deleted=0</update>
+    <insert id="insertPostMedia">
+        INSERT INTO post_media(id,post_id,usage_type,media_type,url,poster_url,alt_text,width,height,sort_order)
+        VALUES(#{media.id},#{media.postId},#{media.usageType},#{media.mediaType},#{media.url},#{media.posterUrl},#{media.altText},#{media.width},#{media.height},#{media.sortOrder})
+    </insert>
+</mapper>

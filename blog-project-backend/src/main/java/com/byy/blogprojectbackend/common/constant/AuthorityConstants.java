@@ -1,0 +1,80 @@
+package com.byy.blogprojectbackend.common.constant;
+
+import java.util.List;
+
+/**
+ * BinSpace 的角色与权限定义。
+ *
+ * <p>每个权限同时包含：
+ * 1. 程序内部使用的权限编码
+ * 2. 前端展示使用的中文名称
+ * </p>
+ */
+public final class AuthorityConstants {
+
+    private AuthorityConstants() {
+    }
+
+    /** Spring Security 角色必须使用 ROLE_ 前缀。 */
+    public static final String ROLE_OWNER = "ROLE_OWNER";
+
+    /**
+     * 权限定义。
+     */
+    public enum Permission {
+
+        POST_CREATE("POST_CREATE", "发布文章"),
+        POST_EDIT("POST_EDIT", "编辑文章"),
+        POST_DELETE("POST_DELETE", "删除文章"),
+
+        CATEGORY_MANAGE("CATEGORY_MANAGE", "分类管理"),
+        TAG_MANAGE("TAG_MANAGE", "标签管理"),
+
+        PROFILE_EDIT("PROFILE_EDIT", "编辑个人资料"),
+        SITE_EDIT("SITE_EDIT", "编辑站点设置"),
+
+        COMMENT_REPLY("COMMENT_REPLY", "回复评论"),
+        COMMENT_DELETE("COMMENT_DELETE", "删除评论"),
+
+        GUESTBOOK_REPLY("GUESTBOOK_REPLY", "回复留言"),
+        GUESTBOOK_DELETE("GUESTBOOK_DELETE", "删除留言");
+
+        /** Spring Security 使用的权限编码。 */
+        private final String code;
+
+        /** 给前端或用户展示的中文名称。 */
+        private final String label;
+
+        Permission(String code, String label) {
+            this.code = code;
+            this.label = label;
+        }
+
+        public String getCode() {
+            return code;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+    }
+
+    /** V1 单一 OWNER 拥有的全部业务权限。 */
+    public static final List<String> OWNER_PERMISSIONS = List.of(
+            Permission.POST_CREATE.getCode(),
+            Permission.POST_EDIT.getCode(),
+            Permission.POST_DELETE.getCode(),
+
+            Permission.CATEGORY_MANAGE.getCode(),
+            Permission.TAG_MANAGE.getCode(),
+
+            Permission.PROFILE_EDIT.getCode(),
+            Permission.SITE_EDIT.getCode(),
+
+            Permission.COMMENT_REPLY.getCode(),
+            Permission.COMMENT_DELETE.getCode(),
+
+            Permission.GUESTBOOK_REPLY.getCode(),
+            Permission.GUESTBOOK_DELETE.getCode()
+    );
+}

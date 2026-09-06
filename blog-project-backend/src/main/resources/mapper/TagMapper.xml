@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.byy.blogprojectbackend.tag.mapper.TagMapper">
+    <sql id="columns">id,name,slug,created_at,updated_at,deleted,deleted_at</sql>
+    <select id="countPublic" resultType="long">SELECT COUNT(*) FROM tag t WHERE t.deleted=0 <if test="used">AND EXISTS(SELECT 1 FROM post_tag pt JOIN post p ON p.id=pt.post_id WHERE pt.tag_id=t.id AND p.type='TECH' AND p.deleted=0 AND p.status='PUBLISHED' AND p.published_at&lt;=UTC_TIMESTAMP(3))</if></select>
+    <select id="selectPublic" resultType="com.byy.blogprojectbackend.tag.entity.Tag">SELECT <include refid="columns"/> FROM tag t WHERE t.deleted=0 <if test="used">AND EXISTS(SELECT 1 FROM post_tag pt JOIN post p ON p.id=pt.post_id WHERE pt.tag_id=t.id AND p.type='TECH' AND p.deleted=0 AND p.status='PUBLISHED' AND p.published_at&lt;=UTC_TIMESTAMP(3))</if> ORDER BY name,id LIMIT #{pageSize} OFFSET #{offset}</select>
+    <select id="countOwner" resultType="long">SELECT COUNT(*) FROM tag <where><if test="status=='ACTIVE'">deleted=0</if><if test="status=='DISABLED'">deleted=1</if></where></select>
+    <select id="selectOwner" resultType="com.byy.blogprojectbackend.tag.entity.Tag">SELECT <include refid="columns"/> FROM tag <where><if test="status=='ACTIVE'">deleted=0</if><if test="status=='DISABLED'">deleted=1</if></where> ORDER BY deleted,name,id LIMIT #{pageSize} OFFSET #{offset}</select>
+    <select id="selectAnyById" resultType="com.byy.blogprojectbackend.tag.entity.Tag">SELECT <include refid="columns"/> FROM tag WHERE id=#{id} LIMIT 1</select>
+    <update id="updateActive">UPDATE tag SET name=#{tag.name},slug=#{tag.slug} WHERE id=#{tag.id} AND deleted=0</update>
+    <update id="softDelete">UPDATE tag SET deleted=1,deleted_at=UTC_TIMESTAMP(3) WHERE id=#{id} AND deleted=0</update>
+</mapper>

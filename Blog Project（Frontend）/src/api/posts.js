@@ -1,0 +1,16 @@
+import request, { responseData } from './request'
+
+export const getPublicFeed = (params) => request.get('/posts', { params }).then(responseData)
+export const getPublicTech = (params) => request.get('/posts/tech', { params }).then(responseData)
+export const getTechDetail = (slug) => request.get(`/posts/tech/${slug}`).then(responseData)
+export const getPublicMoments = (params) => request.get('/posts/moments', { params }).then(responseData)
+export const getMomentDetail = (id) => request.get(`/posts/moments/${id}`).then(responseData)
+export const getOwnerPosts = (params) => request.get('/owner/posts', { params }).then(responseData)
+export const getOwnerTech = (id) => request.get(`/owner/posts/tech/${id}`).then(responseData)
+export const getOwnerMoment = (id) => request.get(`/owner/posts/moments/${id}`).then(responseData)
+export const createTech = (body) => request.post('/owner/posts/tech', body).then(responseData)
+export const updateTech = (id, body) => request.put(`/owner/posts/tech/${id}`, body).then(responseData)
+export const deleteTech = (id, version) => request.delete(`/owner/posts/tech/${id}`, { params: { version } })
+export const createMoment = (body) => request.post('/owner/posts/moments', body).then(responseData)
+export const updateMoment = (id, body) => request.put(`/owner/posts/moments/${id}`, body).then(responseData)
+export const deleteMoment = (id, version) => request.delete(`/owner/posts/moments/${id}`, { params: { version } })

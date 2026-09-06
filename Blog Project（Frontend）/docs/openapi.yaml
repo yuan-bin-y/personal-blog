@@ -1,0 +1,3223 @@
+openapi: 3.0.3
+info:
+  title: BinSpace API
+  version: 2.0.0-draft.1
+  description: |
+    BinSpace 当前 42 个接口基线与下一阶段功能 2～8 契约。
+    认证使用 Spring Security、Bearer JWT 和 Redis Token Session。
+    新增接口在后端实现前仅代表约定，不代表当前环境已经可调用。
+servers:
+  - url: http://localhost:8080
+    description: Local Spring Boot
+tags:
+  - name: Auth
+    description: Visitor/Owner 身份、JWT 登录与退出
+  - name: Site
+    description: Visitor 空间初始化
+  - name: Owner Site
+    description: Owner Profile 与站点配置
+  - name: Posts
+    description: Visitor 混合内容流
+  - name: Tech
+    description: Visitor TECH 内容
+  - name: Moments
+    description: Visitor MOMENT 内容
+  - name: Owner Posts
+    description: Owner TECH/MOMENT 读取与 CRUD
+  - name: Categories
+    description: TECH 分类读取与管理
+  - name: Tags
+    description: TECH 标签读取与管理
+  - name: Comments
+    description: Post 评论读取与 Owner 管理
+  - name: Guestbook
+    description: 空间留言读取与 Owner 管理
+  - name: Archive
+    description: TECH/MOMENT 混合归档
+  - name: Visitor Interaction
+    description: 登录 Visitor 的评论与留言写操作
+  - name: Likes
+    description: Post 持久化点赞
+  - name: Media
+    description: Owner 媒体上传与管理
+  - name: Realtime
+    description: SSE 与通知中心
+  - name: Search
+    description: 全文搜索、推荐与 AI 搜索
+  - name: Owner Advanced Posts
+    description: 定时发布、自动保存、版本、回收站、批量与导入
+
+paths:
+  /api/auth/login:
+    post:
+      summary: Visitor / Owner 登录
+      description: 使用用户名和密码登录；角色由服务端账号决定。成功后返回 Access Token，并在 Redis 登记 Token Session。
+      tags: [Auth]
+      operationId: login
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginDTO' }
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/AuthFailed' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+
+  /api/auth/me:
+    get:
+      summary: 获取当前身份
+      description: 不携带 Token 时返回 VISITOR；携带有效 Bearer Token 时返回 OWNER。
+      tags: [Auth]
+      operationId: getCurrentIdentity
+      parameters: []
+      responses:
+        '200':
+          description: 当前身份
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IdentityResponse' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+
+  /api/auth/logout:
+    post:
+      summary: 退出登录
+      description: Visitor 或 Owner 撤销当前 JWT 在 Redis 中的 Token Session；客户端随后丢弃本地 Access Token。
+      tags: [Auth]
+      operationId: logout
+      parameters: []
+      responses:
+        '204': { description: 退出成功，无响应体 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/site/bootstrap:
+    get:
+      summary: 获取空间初始化数据
+      description: 一次返回 Site Basic、Profile、Hero、Announcement、Music、Appearance、Page Media 和 External Links；无请求体。
+      tags: [Site]
+      operationId: getSiteBootstrap
+      parameters: []
+      responses:
+        '200':
+          description: 空间初始化数据
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SiteBootstrapResponse' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+
+  /api/owner/profile:
+    put:
+      summary: 更新 Owner Profile
+      description: 使用 profile.version 乐观锁，不影响 site_config.version。
+      tags: [Owner Site]
+      operationId: updateOwnerProfile
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProfileDTO' }
+      responses:
+        '200':
+          description: 更新后的 Profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProfileResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/site/basic:
+    put:
+      summary: 更新空间基本信息
+      description: 更新站点英文名、中文名与说明，使用 site_config 共享 version。
+      tags: [Owner Site]
+      operationId: updateSiteBasic
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateSiteBasicDTO' }
+      responses:
+        '200':
+          description: 更新后的 Basic 与最新共享版本
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SiteBasicSectionResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/site/hero:
+    put:
+      summary: 更新 Hero
+      description: 保存 Hero 文案及 desktop/mobile video/poster URL，使用 site_config 共享 version。
+      tags: [Owner Site]
+      operationId: updateHero
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateHeroDTO' }
+      responses:
+        '200':
+          description: 更新后的 Hero 与最新共享版本
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HeroSectionResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/site/announcement:
+    put:
+      summary: 更新空间公告
+      description: enabled=true 时 content 必须非空；使用 site_config 共享 version。
+      tags: [Owner Site]
+      operationId: updateAnnouncement
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateAnnouncementDTO' }
+      responses:
+        '200':
+          description: 更新后的公告或 null 及最新共享版本
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnnouncementSectionResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/site/music:
+    put:
+      summary: 更新空间音乐
+      description: audioUrl 为空表示关闭音乐；使用 site_config 共享 version。
+      tags: [Owner Site]
+      operationId: updateMusic
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateMusicDTO' }
+      responses:
+        '200':
+          description: 更新后的音乐或 null 及最新共享版本
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MusicSectionResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/site/appearance:
+    put:
+      summary: 更新默认空间外观
+      description: 保存全站默认外观；Visitor 的页面内临时偏好不调用此接口。使用共享 version。
+      tags: [Owner Site]
+      operationId: updateAppearance
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateAppearanceDTO' }
+      responses:
+        '200':
+          description: 更新后的外观与最新共享版本
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AppearanceSectionResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/site/page-media:
+    put:
+      summary: 更新页面媒体配置
+      description: 保存 Moments、Guestbook、Tech、Archive、About 背景配置，使用共享 version。
+      tags: [Owner Site]
+      operationId: updatePageMedia
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePageMediaDTO' }
+      responses:
+        '200':
+          description: 更新后的页面媒体与最新共享版本
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageMediaSectionResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/posts:
+    get:
+      summary: 获取首页混合 Feed
+      description: 只返回公开的 PUBLISHED TECH/MOMENT；无请求体。
+      tags: [Posts]
+      operationId: listPublicPosts
+      parameters:
+        - { $ref: '#/components/parameters/PostTypeQuery' }
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200':
+          description: 分页 Post 摘要
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostPageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+
+  /api/posts/tech:
+    get:
+      summary: 获取公开 TECH 列表
+      description: 支持 Category/Tag slug 筛选，只返回公开文章；无请求体。
+      tags: [Tech]
+      operationId: listPublicTechPosts
+      parameters:
+        - { $ref: '#/components/parameters/CategorySlugQuery' }
+        - { $ref: '#/components/parameters/TagSlugQuery' }
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200':
+          description: 分页 TECH 摘要
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostPageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+
+  /api/posts/tech/{slug}:
+    get:
+      summary: 获取公开 TECH 详情
+      description: 通过稳定 slug 获取正文、关联元信息和相关文章；无请求体。
+      tags: [Tech]
+      operationId: getPublicTechPost
+      parameters:
+        - { $ref: '#/components/parameters/SlugPath' }
+      responses:
+        '200':
+          description: TECH 详情
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TechDetailResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+
+  /api/posts/moments:
+    get:
+      summary: 获取公开 MOMENT 列表
+      description: 前端按 publishedAt 分月展示；无请求体。
+      tags: [Moments]
+      operationId: listPublicMoments
+      parameters:
+        - { $ref: '#/components/parameters/YearQuery' }
+        - { $ref: '#/components/parameters/MonthQuery' }
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200':
+          description: 分页 MOMENT 摘要
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostPageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+
+  /api/posts/moments/{id}:
+    get:
+      summary: 获取公开 MOMENT 详情
+      description: MOMENT 不返回标题、摘要、分类和阅读时间；无请求体。
+      tags: [Moments]
+      operationId: getPublicMoment
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      responses:
+        '200':
+          description: MOMENT 详情
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MomentDetailResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+
+  /api/archive:
+    get:
+      summary: 获取公开归档
+      description: 按时间返回 TECH/MOMENT 混合归档；无请求体。
+      tags: [Archive]
+      operationId: getPublicArchive
+      parameters:
+        - { $ref: '#/components/parameters/YearQuery' }
+        - { $ref: '#/components/parameters/PostTypeQuery' }
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200':
+          description: 分页归档
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ArchiveResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+
+  /api/owner/posts:
+    get:
+      summary: 获取 Owner 内容列表
+      description: 可读取 DRAFT/PUBLISHED，供刷新后恢复草稿；无请求体。
+      tags: [Owner Posts]
+      operationId: listOwnerPosts
+      parameters:
+        - { $ref: '#/components/parameters/PostTypeQuery' }
+        - { $ref: '#/components/parameters/PostStatusQuery' }
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200':
+          description: Owner 分页内容，包含 status/version
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostPageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/posts/tech:
+    post:
+      summary: 创建 TECH
+      description: 服务端生成 id、slug、readingTime、时间和互动计数；正文图片 URL 保存在 content。
+      tags: [Owner Posts]
+      operationId: createTechPost
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTechPostDTO' }
+      responses:
+        '201':
+          description: 创建后的 TECH
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TechDetailResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/ResourceConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/posts/tech/{id}:
+    get:
+      summary: Owner 按 ID 获取 TECH
+      description: 可读取 DRAFT/PUBLISHED，返回 status/version；无请求体。
+      tags: [Owner Posts]
+      operationId: getOwnerTechPost
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      responses:
+        '200':
+          description: Owner TECH 编辑详情
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TechDetailResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+    put:
+      summary: 更新 TECH
+      description: 完整替换可编辑字段；标题变化不修改 slug，必须携带 version。
+      tags: [Owner Posts]
+      operationId: updateTechPost
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTechPostDTO' }
+      responses:
+        '200':
+          description: 更新后的 TECH
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TechDetailResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+    delete:
+      summary: 删除 TECH
+      description: 使用 id + version 逻辑删除；不使用 ETag/If-Match；无请求体。
+      tags: [Owner Posts]
+      operationId: deleteTechPost
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+        - { $ref: '#/components/parameters/VersionQuery' }
+      responses:
+        '204': { description: 删除成功，无响应体 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/posts/moments:
+    post:
+      summary: 创建 MOMENT
+      description: MOMENT 只接收 content、images、status，不接收 TECH 专属字段。
+      tags: [Owner Posts]
+      operationId: createMoment
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateMomentDTO' }
+      responses:
+        '201':
+          description: 创建后的 MOMENT
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MomentDetailResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/posts/moments/{id}:
+    get:
+      summary: Owner 按 ID 获取 MOMENT
+      description: 可读取 DRAFT/PUBLISHED，返回 status/version；无请求体。
+      tags: [Owner Posts]
+      operationId: getOwnerMoment
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      responses:
+        '200':
+          description: Owner MOMENT 编辑详情
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MomentDetailResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+    put:
+      summary: 更新 MOMENT
+      description: 完整替换 content/images/status，必须携带 version。
+      tags: [Owner Posts]
+      operationId: updateMoment
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateMomentDTO' }
+      responses:
+        '200':
+          description: 更新后的 MOMENT
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MomentDetailResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+    delete:
+      summary: 删除 MOMENT
+      description: 使用 id + version 逻辑删除；不使用 ETag/If-Match；无请求体。
+      tags: [Owner Posts]
+      operationId: deleteMoment
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+        - { $ref: '#/components/parameters/VersionQuery' }
+      responses:
+        '204': { description: 删除成功，无响应体 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/categories:
+    get:
+      summary: 获取公开分类
+      description: 只返回 active 分类；used=true 时仅返回被公开 TECH 使用的分类；无请求体。
+      tags: [Categories]
+      operationId: listPublicCategories
+      parameters:
+        - { $ref: '#/components/parameters/UsedQuery' }
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200':
+          description: 分页分类
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategoryPageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+
+  /api/owner/categories:
+    get:
+      summary: 获取 Owner 分类列表
+      description: 支持 active/disabled/all 管理视图；无请求体。
+      tags: [Categories]
+      operationId: listOwnerCategories
+      parameters:
+        - { $ref: '#/components/parameters/ActiveStatusQuery' }
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200':
+          description: 分页分类管理数据
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategoryAdminPageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+    post:
+      summary: 创建分类
+      description: slug 为空时服务端生成；name/slug 必须唯一。
+      tags: [Categories]
+      operationId: createCategory
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCategoryDTO' }
+      responses:
+        '201':
+          description: 创建后的分类
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategoryAdminResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/ResourceConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/categories/{id}:
+    put:
+      summary: 更新分类
+      description: 使用 category.version 乐观锁。
+      tags: [Categories]
+      operationId: updateCategory
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCategoryDTO' }
+      responses:
+        '200':
+          description: 更新后的分类
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategoryAdminResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+    delete:
+      summary: 停用分类
+      description: 逻辑删除，不清空历史文章 category_id；无请求体。
+      tags: [Categories]
+      operationId: deleteCategory
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+        - { $ref: '#/components/parameters/VersionQuery' }
+      responses:
+        '204': { description: 停用成功，无响应体 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/tags:
+    get:
+      summary: 获取公开标签
+      description: 只返回 active 标签；used=true 时仅返回被公开 TECH 使用的标签；无请求体。
+      tags: [Tags]
+      operationId: listPublicTags
+      parameters:
+        - { $ref: '#/components/parameters/UsedQuery' }
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200':
+          description: 分页标签
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TagPageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+
+  /api/owner/tags:
+    get:
+      summary: 获取 Owner 标签列表
+      description: 支持 active/disabled/all 管理视图；无请求体。
+      tags: [Tags]
+      operationId: listOwnerTags
+      parameters:
+        - { $ref: '#/components/parameters/ActiveStatusQuery' }
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200':
+          description: 分页标签管理数据
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TagAdminPageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+    post:
+      summary: 创建标签
+      description: slug 为空时服务端生成；name/slug 必须唯一。
+      tags: [Tags]
+      operationId: createTag
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTagDTO' }
+      responses:
+        '201':
+          description: 创建后的标签
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TagAdminResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/ResourceConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/tags/{id}:
+    put:
+      summary: 更新标签
+      description: 当前 tag 表没有 version，不虚构乐观锁字段。
+      tags: [Tags]
+      operationId: updateTag
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTagDTO' }
+      responses:
+        '200':
+          description: 更新后的标签
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TagAdminResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/ResourceConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+    delete:
+      summary: 停用标签
+      description: 逻辑删除，不删除 post_tag 历史关联；无请求体。
+      tags: [Tags]
+      operationId: deleteTag
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      responses:
+        '204': { description: 停用成功，无响应体 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/posts/{postId}/comments:
+    get:
+      summary: 获取 Post 评论
+      description: Comment 必须属于指定公开 Post；无请求体。
+      tags: [Comments]
+      operationId: listPostComments
+      parameters:
+        - { $ref: '#/components/parameters/PostIdPath' }
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200':
+          description: 分页评论及 Owner 回复
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommentPageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+    post:
+      summary: 发表评论
+      description: 登录 Visitor 或 Owner 对公开 Post 发表评论；作者身份取自 JWT，不接受客户端作者字段。
+      tags: [Visitor Interaction]
+      operationId: createComment
+      parameters:
+        - { $ref: '#/components/parameters/PostIdPath' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCommentDTO' }
+      responses:
+        '201':
+          description: 评论创建成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/ResourceConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/comments/{commentId}/reply:
+    post:
+      summary: 回复评论
+      description: 每条顶层评论最多一条 Owner 回复；新建返回 201，恢复已删除回复返回 200。
+      tags: [Comments]
+      operationId: replyToComment
+      parameters:
+        - { $ref: '#/components/parameters/CommentIdPath' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReplyDTO' }
+      responses:
+        '200':
+          description: 恢复并更新已删除回复
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommentResponse' }
+        '201':
+          description: 新建回复
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/ResourceConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/comments/{commentId}:
+    delete:
+      summary: 删除评论
+      description: 删除顶层评论时软删 Owner 回复并维护 post.comment_count；无请求体。
+      tags: [Comments]
+      operationId: deleteComment
+      parameters:
+        - { $ref: '#/components/parameters/CommentIdPath' }
+      responses:
+        '204': { description: 删除成功，无响应体 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/guestbook:
+    get:
+      summary: 获取空间留言
+      description: Guestbook 属于整个空间，不属于 Post；首页预览使用 page=1&pageSize=3；无请求体。
+      tags: [Guestbook]
+      operationId: listGuestbookEntries
+      parameters:
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200':
+          description: 分页留言及 Owner 回复
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GuestbookPageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+    post:
+      summary: 发布空间留言
+      description: 登录 Visitor 或 Owner 发布顶层留言；Guestbook 不接受 postId。
+      tags: [Visitor Interaction]
+      operationId: createGuestbookEntry
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateGuestbookDTO' }
+      responses:
+        '201':
+          description: 留言创建成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GuestbookResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/ResourceConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/guestbook/{entryId}/reply:
+    post:
+      summary: 回复空间留言
+      description: 每条顶层留言最多一条 Owner 回复；新建返回 201，恢复已删除回复返回 200。
+      tags: [Guestbook]
+      operationId: replyToGuestbookEntry
+      parameters:
+        - { $ref: '#/components/parameters/EntryIdPath' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReplyDTO' }
+      responses:
+        '200':
+          description: 恢复并更新已删除回复
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GuestbookResponse' }
+        '201':
+          description: 新建回复
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GuestbookResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/ResourceConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/owner/guestbook/{entryId}:
+    delete:
+      summary: 删除空间留言
+      description: 软删顶层留言及其 Owner 回复；无请求体。
+      tags: [Guestbook]
+      operationId: deleteGuestbookEntry
+      parameters:
+        - { $ref: '#/components/parameters/EntryIdPath' }
+      responses:
+        '204': { description: 删除成功，无响应体 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security:
+        - bearerAuth: []
+
+  /api/auth/register:
+    post:
+      summary: 注册 Visitor
+      description: 创建 VISITOR 账号并返回 JWT；不会创建 OWNER。用户名唯一，接口需要限流。
+      tags: [Auth]
+      operationId: registerVisitor
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterVisitorDTO' }
+      responses:
+        '201':
+          description: 注册并登录成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/ResourceConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+
+  /api/comments/{commentId}:
+    put:
+      summary: 修改自己的评论
+      description: 仅评论作者可修改顶层评论，作者身份取自 JWT。
+      tags: [Visitor Interaction]
+      operationId: updateOwnComment
+      parameters:
+        - { $ref: '#/components/parameters/CommentIdPath' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCommentDTO' }
+      responses:
+        '200':
+          description: 修改后的评论
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommentResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+    delete:
+      summary: 删除自己的评论
+      description: 仅评论作者可软删除；同时软删 Owner 回复并维护 Post 评论数。
+      tags: [Visitor Interaction]
+      operationId: deleteOwnComment
+      parameters:
+        - { $ref: '#/components/parameters/CommentIdPath' }
+      responses:
+        '204': { description: 删除成功，无响应体 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/guestbook/{entryId}:
+    put:
+      summary: 修改自己的留言
+      description: 仅留言作者可修改顶层留言。
+      tags: [Visitor Interaction]
+      operationId: updateOwnGuestbookEntry
+      parameters:
+        - { $ref: '#/components/parameters/EntryIdPath' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateGuestbookDTO' }
+      responses:
+        '200':
+          description: 修改后的留言
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GuestbookResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+    delete:
+      summary: 删除自己的留言
+      description: 仅留言作者可软删除，同时软删其 Owner 回复。
+      tags: [Visitor Interaction]
+      operationId: deleteOwnGuestbookEntry
+      parameters:
+        - { $ref: '#/components/parameters/EntryIdPath' }
+      responses:
+        '204': { description: 删除成功，无响应体 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/posts/{postId}/like:
+    put:
+      summary: 点赞 Post
+      description: 幂等创建点赞关系并返回最终状态；匿名 Visitor 不可点赞。
+      tags: [Likes]
+      operationId: likePost
+      parameters:
+        - { $ref: '#/components/parameters/PostIdPath' }
+      responses:
+        '200':
+          description: 当前点赞状态
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LikeStateResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+    delete:
+      summary: 取消点赞 Post
+      description: 幂等删除点赞关系并返回最终状态。
+      tags: [Likes]
+      operationId: unlikePost
+      parameters:
+        - { $ref: '#/components/parameters/PostIdPath' }
+      responses:
+        '200':
+          description: 当前点赞状态
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LikeStateResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/me/likes:
+    get:
+      summary: 获取我的点赞
+      description: 分页返回当前登录用户点赞且仍公开的 Post。
+      tags: [Likes]
+      operationId: listMyLikedPosts
+      parameters:
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200':
+          description: 点赞 Post 分页
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostPageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/owner/media:
+    post:
+      summary: 上传媒体
+      description: 后端校验 multipart 文件、上传 OSS 并返回可引用的媒体资产；OSS 凭证不返回前端。
+      tags: [Media]
+      operationId: uploadMedia
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/UploadMediaForm' }
+      responses:
+        '201':
+          description: 上传成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MediaAssetResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+    get:
+      summary: 获取媒体库
+      description: Owner 分页选择已经上传的媒体。
+      tags: [Media]
+      operationId: listMediaAssets
+      parameters:
+        - name: mediaType
+          in: query
+          required: false
+          schema: { type: string, enum: [IMAGE, VIDEO, AUDIO] }
+        - name: usageType
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/MediaUsageType' }
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200':
+          description: 媒体资产分页
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MediaAssetPageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/owner/media/{mediaId}:
+    delete:
+      summary: 删除媒体
+      description: 仅允许删除未被 Profile、SiteConfig 或 Post 引用的媒体；同时删除 OSS 对象。
+      tags: [Media]
+      operationId: deleteMediaAsset
+      parameters:
+        - { $ref: '#/components/parameters/MediaIdPath' }
+      responses:
+        '204': { description: 删除成功，无响应体 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/ResourceConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/realtime/events:
+    get:
+      summary: 订阅实时通知
+      description: SSE 长连接；HTTP 仍负责评论和留言写入。支持 Last-Event-ID 断线续传。
+      tags: [Realtime]
+      operationId: subscribeRealtimeEvents
+      parameters:
+        - name: Last-Event-ID
+          in: header
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: SSE 事件流，event 为通知类型，data 为 NotificationVO JSON
+          content:
+            text/event-stream:
+              schema: { type: string, example: "id: 190000000000000001\nevent: COMMENT_CREATED\ndata: {\"id\":\"190000000000000001\"}\n\n" }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/notifications:
+    get:
+      summary: 获取通知列表
+      description: 用于首次加载和 SSE 断线补偿。
+      tags: [Realtime]
+      operationId: listNotifications
+      parameters:
+        - name: unreadOnly
+          in: query
+          required: false
+          schema: { type: boolean, default: false }
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200':
+          description: 通知分页
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/notifications/{notificationId}/read:
+    put:
+      summary: 标记通知已读
+      description: 仅通知接收者可以操作。
+      tags: [Realtime]
+      operationId: markNotificationRead
+      parameters:
+        - { $ref: '#/components/parameters/NotificationIdPath' }
+      responses:
+        '200':
+          description: 更新后的通知
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/notifications/read-all:
+    put:
+      summary: 全部通知标记已读
+      description: 将当前用户所有未读通知标记为已读，返回剩余未读数。
+      tags: [Realtime]
+      operationId: markAllNotificationsRead
+      parameters: []
+      responses:
+        '200':
+          description: 剩余未读数
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UnreadCountResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/search:
+    get:
+      summary: 搜索公开内容
+      description: 搜索 Elasticsearch 中的公开 TECH/MOMENT，绝不返回草稿或软删除内容。
+      tags: [Search]
+      operationId: searchPublishedPosts
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100 }
+          example: Redis Lua
+        - name: type
+          in: query
+          required: false
+          schema: { type: string, enum: [ALL, TECH, MOMENT], default: ALL }
+        - { $ref: '#/components/parameters/CategorySlugQuery' }
+        - { $ref: '#/components/parameters/TagSlugQuery' }
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200':
+          description: 搜索结果分页
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SearchResultPageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+
+  /api/posts/{postId}/related:
+    get:
+      summary: 获取相关内容
+      description: 按分类、标签、类型和时间衰减推荐公开内容，不使用个人画像。
+      tags: [Search]
+      operationId: listRelatedPosts
+      parameters:
+        - { $ref: '#/components/parameters/PostIdPath' }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 10, default: 4 }
+      responses:
+        '200':
+          description: 相关 Post
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+
+  /api/search/ai:
+    post:
+      summary: AI 内容问答
+      description: 只使用已发布 BinSpace 内容作为检索上下文，并返回来源；接口需要限流。
+      tags: [Search]
+      operationId: askPublishedContent
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AiSearchDTO' }
+      responses:
+        '200':
+          description: 带来源的回答
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSearchResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '502': { $ref: '#/components/responses/UpstreamError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: []
+
+  /api/owner/search/reindex:
+    post:
+      summary: 创建全文索引重建任务
+      description: 异步重建公开内容索引；已有运行中任务时返回 409。
+      tags: [Search]
+      operationId: createSearchReindexTask
+      parameters: []
+      responses:
+        '202':
+          description: 任务已接受
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReindexTaskResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/ResourceConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/owner/search/reindex/{taskId}:
+    get:
+      summary: 获取索引重建状态
+      description: 返回异步重建任务的当前状态。
+      tags: [Search]
+      operationId: getSearchReindexTask
+      parameters:
+        - { $ref: '#/components/parameters/TaskIdPath' }
+      responses:
+        '200':
+          description: 重建任务
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReindexTaskResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/owner/posts/{postId}/schedule:
+    put:
+      summary: 设置定时发布
+      description: 将 Post 置为 SCHEDULED；发布时间必须晚于当前时间，并使用 Post version 乐观锁。
+      tags: [Owner Advanced Posts]
+      operationId: schedulePost
+      parameters:
+        - { $ref: '#/components/parameters/PostIdPath' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SchedulePostDTO' }
+      responses:
+        '200': { description: 已设置定时发布, content: { application/json: { schema: { $ref: '#/components/schemas/PostSummaryResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+    delete:
+      summary: 取消定时发布
+      description: 将 SCHEDULED Post 恢复为 DRAFT，version 通过 Query 明确传递。
+      tags: [Owner Advanced Posts]
+      operationId: cancelScheduledPost
+      parameters:
+        - { $ref: '#/components/parameters/PostIdPath' }
+        - { $ref: '#/components/parameters/VersionQuery' }
+      responses:
+        '200': { description: 已取消定时发布, content: { application/json: { schema: { $ref: '#/components/schemas/PostSummaryResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/owner/posts/{postId}/autosave:
+    put:
+      summary: 自动保存编辑内容
+      description: 保存独立草稿快照，不覆盖正式 Post；baseVersion 不匹配时返回 409。
+      tags: [Owner Advanced Posts]
+      operationId: autosavePost
+      parameters:
+        - { $ref: '#/components/parameters/PostIdPath' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AutosavePostDTO' }
+      responses:
+        '200': { description: 自动保存成功, content: { application/json: { schema: { $ref: '#/components/schemas/AutosaveResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/owner/posts/{postId}/versions:
+    get:
+      summary: 获取 Post 历史版本
+      description: 分页返回正式保存产生的历史版本摘要。
+      tags: [Owner Advanced Posts]
+      operationId: listPostVersions
+      parameters:
+        - { $ref: '#/components/parameters/PostIdPath' }
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200': { description: 历史版本分页, content: { application/json: { schema: { $ref: '#/components/schemas/PostVersionPageResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/owner/posts/{postId}/versions/{versionId}:
+    get:
+      summary: 获取历史版本详情
+      description: 返回指定 Post 的某个历史快照，不能跨 Post 读取。
+      tags: [Owner Advanced Posts]
+      operationId: getPostVersion
+      parameters:
+        - { $ref: '#/components/parameters/PostIdPath' }
+        - { $ref: '#/components/parameters/VersionIdPath' }
+      responses:
+        '200': { description: 历史版本详情, content: { application/json: { schema: { $ref: '#/components/schemas/PostVersionDetailResponse' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/owner/posts/{postId}/versions/{versionId}/restore:
+    post:
+      summary: 恢复历史版本
+      description: 先保存当前快照，再把指定历史版本恢复到 Post；使用当前 Post version 乐观锁。
+      tags: [Owner Advanced Posts]
+      operationId: restorePostVersion
+      parameters:
+        - { $ref: '#/components/parameters/PostIdPath' }
+        - { $ref: '#/components/parameters/VersionIdPath' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RestoreVersionDTO' }
+      responses:
+        '200': { description: 恢复后的 Post, content: { application/json: { schema: { $ref: '#/components/schemas/PostSummaryResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/VersionConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/owner/posts/trash:
+    get:
+      summary: 获取回收站
+      description: 分页返回 Owner 已软删除的 TECH/MOMENT。
+      tags: [Owner Advanced Posts]
+      operationId: listTrashedPosts
+      parameters:
+        - { $ref: '#/components/parameters/PostTypeQuery' }
+        - { $ref: '#/components/parameters/PageQuery' }
+        - { $ref: '#/components/parameters/PageSizeQuery' }
+      responses:
+        '200': { description: 回收站分页, content: { application/json: { schema: { $ref: '#/components/schemas/PostPageResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/owner/posts/{postId}/restore:
+    post:
+      summary: 恢复回收站 Post
+      description: 将软删除内容恢复为 DRAFT；关联唯一资源冲突时返回 409。
+      tags: [Owner Advanced Posts]
+      operationId: restoreTrashedPost
+      parameters:
+        - { $ref: '#/components/parameters/PostIdPath' }
+        - { $ref: '#/components/parameters/VersionQuery' }
+      responses:
+        '200': { description: 恢复后的 Post, content: { application/json: { schema: { $ref: '#/components/schemas/PostSummaryResponse' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/owner/posts/batch/publish:
+    post:
+      summary: 批量发布 Post
+      description: 逐项发布；单项失败不回滚其他成功项，响应列出每项结果。
+      tags: [Owner Advanced Posts]
+      operationId: batchPublishPosts
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BatchPostDTO' }
+      responses:
+        '200': { description: 批量处理结果, content: { application/json: { schema: { $ref: '#/components/schemas/BatchPostResultResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/owner/posts/batch/delete:
+    post:
+      summary: 批量软删除 Post
+      description: 逐项软删除；单项失败不回滚其他成功项。
+      tags: [Owner Advanced Posts]
+      operationId: batchDeletePosts
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BatchPostDTO' }
+      responses:
+        '200': { description: 批量处理结果, content: { application/json: { schema: { $ref: '#/components/schemas/BatchPostResultResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/owner/posts/tech/{id}/slug:
+    put:
+      summary: 修改 TECH slug
+      description: 修改 slug 并执行唯一约束与乐观锁校验。
+      tags: [Owner Advanced Posts]
+      operationId: updateTechSlug
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateSlugDTO' }
+      responses:
+        '200': { description: 更新后的 TECH, content: { application/json: { schema: { $ref: '#/components/schemas/TechDetailResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+  /api/owner/posts/import/markdown:
+    post:
+      summary: 解析 Markdown 文件
+      description: 仅解析为编辑器预览数据，不直接创建或发布文章。
+      tags: [Owner Advanced Posts]
+      operationId: importMarkdown
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200': { description: 解析结果, content: { application/json: { schema: { $ref: '#/components/schemas/MarkdownImportResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '500': { $ref: '#/components/responses/InternalError' }
+      security: [{ bearerAuth: [] }]
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "登录/注册接口返回的 JWT Access Token。Visitor 与 Owner 受保护请求均使用 Authorization: Bearer <token>。"
+
+  parameters:
+    PageQuery:
+      name: page
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSizeQuery:
+      name: pageSize
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/BigIntId' }
+    PostIdPath:
+      name: postId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/BigIntId' }
+    CommentIdPath:
+      name: commentId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/BigIntId' }
+    EntryIdPath:
+      name: entryId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/BigIntId' }
+    SlugPath:
+      name: slug
+      in: path
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 180 }
+      example: redis-lua-stock-control
+    VersionQuery:
+      name: version
+      in: query
+      required: true
+      schema: { type: integer, minimum: 0 }
+      example: 3
+    PostTypeQuery:
+      name: type
+      in: query
+      required: false
+      schema: { type: string, enum: [ALL, TECH, MOMENT], default: ALL }
+    PostStatusQuery:
+      name: status
+      in: query
+      required: false
+      schema: { type: string, enum: [ALL, DRAFT, SCHEDULED, PUBLISHED], default: ALL }
+    CategorySlugQuery:
+      name: category
+      in: query
+      required: false
+      schema: { type: string }
+      example: redis
+    TagSlugQuery:
+      name: tag
+      in: query
+      required: false
+      schema: { type: string }
+      example: lua
+    YearQuery:
+      name: year
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1970, maximum: 9999 }
+      example: 2026
+    MonthQuery:
+      name: month
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 12 }
+      example: 9
+    UsedQuery:
+      name: used
+      in: query
+      required: false
+      schema: { type: boolean }
+      description: true 时仅返回被公开 TECH 使用的项目。
+    ActiveStatusQuery:
+      name: status
+      in: query
+      required: false
+      schema: { type: string, enum: [ACTIVE, DISABLED, ALL], default: ALL }
+    MediaIdPath:
+      name: mediaId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/BigIntId' }
+    NotificationIdPath:
+      name: notificationId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/BigIntId' }
+    VersionIdPath:
+      name: versionId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/BigIntId' }
+    TaskIdPath:
+      name: taskId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 64 }
+
+  responses:
+    BadRequest:
+      description: 请求参数或 Bean Validation 失败
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { code: BAD_REQUEST, message: 请求参数不正确, data: { title: 标题不能为空 }, traceId: 01JEXAMPLE }
+    Unauthorized:
+      description: 未携带 Token、JWT 无效/过期，或 Redis Token Session 已失效
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { code: AUTH_REQUIRED, message: 请先登录, data: null, traceId: 01JEXAMPLE }
+    AuthFailed:
+      description: 用户名或密码错误
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { code: AUTH_FAILED, message: 用户名或密码错误, data: null, traceId: 01JEXAMPLE }
+    Forbidden:
+      description: 当前 JWT 身份缺少接口要求的角色或权限
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { code: FORBIDDEN, message: 无权执行此操作, data: null, traceId: 01JEXAMPLE }
+    NotFound:
+      description: 资源不存在、已删除或不可见
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { code: RESOURCE_NOT_FOUND, message: 资源不存在, data: null, traceId: 01JEXAMPLE }
+    VersionConflict:
+      description: 乐观锁版本冲突
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { code: VERSION_CONFLICT, message: 数据已被修改, data: null, traceId: 01JEXAMPLE }
+    ResourceConflict:
+      description: 唯一键、重复回复或资源状态冲突
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { code: RESOURCE_CONFLICT, message: 资源状态冲突, data: null, traceId: 01JEXAMPLE }
+    Conflict:
+      description: 乐观锁、唯一键或资源状态冲突
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          examples:
+            version:
+              value: { code: VERSION_CONFLICT, message: 数据已被修改, data: null, traceId: 01JEXAMPLE }
+            resource:
+              value: { code: RESOURCE_CONFLICT, message: 资源状态冲突, data: null, traceId: 01JEXAMPLE }
+    InternalError:
+      description: 未处理的服务端错误
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { code: INTERNAL_ERROR, message: 服务暂时不可用, data: null, traceId: 01JEXAMPLE }
+    PayloadTooLarge:
+      description: 上传文件超过服务端限制
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { code: PAYLOAD_TOO_LARGE, message: 文件大小超过限制, data: null, traceId: 01JEXAMPLE }
+    UnsupportedMediaType:
+      description: 文件真实媒体类型不受支持
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { code: UNSUPPORTED_MEDIA_TYPE, message: 不支持该文件类型, data: null, traceId: 01JEXAMPLE }
+    RateLimited:
+      description: 请求过于频繁
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { code: RATE_LIMITED, message: 请求过于频繁，请稍后再试, data: null, traceId: 01JEXAMPLE }
+    UpstreamError:
+      description: AI 或搜索上游服务暂时不可用
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { code: UPSTREAM_ERROR, message: 上游服务暂时不可用, data: null, traceId: 01JEXAMPLE }
+
+  schemas:
+    NullOnly:
+      type: object
+      nullable: true
+      enum: [null]
+      description: OpenAPI 3.0 中供 anyOf 复用的 null 分支。
+
+    BigIntId:
+      type: string
+      pattern: '^[0-9]+$'
+      description: MySQL BIGINT 的十进制字符串，禁止在前端转换为 Number。
+      example: '1909508401234567168'
+
+    ApiSuccessBase:
+      type: object
+      required: [code, message, traceId]
+      properties:
+        code: { type: string, enum: [OK], example: OK }
+        message: { type: string, example: success }
+        traceId: { type: string, example: 01JEXAMPLE }
+
+    ErrorResponse:
+      type: object
+      required: [code, message, data, traceId]
+      properties:
+        code:
+          type: string
+          enum: [BAD_REQUEST, AUTH_REQUIRED, AUTH_FAILED, FORBIDDEN, RESOURCE_NOT_FOUND, VERSION_CONFLICT, RESOURCE_CONFLICT, PAYLOAD_TOO_LARGE, UNSUPPORTED_MEDIA_TYPE, RATE_LIMITED, UPSTREAM_ERROR, INTERNAL_ERROR]
+        message: { type: string }
+        data:
+          type: object
+          nullable: true
+          additionalProperties: true
+        traceId: { type: string }
+
+    OwnerLoginDTO:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, minLength: 1, maxLength: 64 }
+        password: { type: string, format: password, minLength: 1, maxLength: 128, writeOnly: true }
+      example: { username: owner, password: change-me }
+
+    OwnerLoginVO:
+      type: object
+      required: [accessToken, tokenType, expiresIn, identity]
+      properties:
+        accessToken:
+          type: string
+          description: JWT Access Token。客户端仅保存 Token 本体，不包含 Bearer 前缀。
+          example: eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJiaW5zcGFjZSJ9.signature
+        tokenType: { type: string, enum: [Bearer], example: Bearer }
+        expiresIn:
+          type: integer
+          format: int64
+          description: Access Token 剩余有效秒数。
+          example: 7200
+        identity: { $ref: '#/components/schemas/IdentityVO' }
+
+    IdentityUserVO:
+      type: object
+      required: [id, username, displayName, avatar]
+      properties:
+        id: { $ref: '#/components/schemas/BigIntId' }
+        username: { type: string, example: owner }
+        displayName: { type: string, example: 玢 }
+        avatar: { type: string, nullable: true, example: /media/avatar.jpg }
+
+    IdentityVO:
+      type: object
+      required: [authenticated, role, user, permissions]
+      properties:
+        authenticated: { type: boolean, example: true }
+        role: { type: string, enum: [VISITOR, OWNER], example: OWNER }
+        user:
+          anyOf:
+            - { $ref: '#/components/schemas/IdentityUserVO' }
+            - { $ref: '#/components/schemas/NullOnly' }
+        permissions:
+          type: array
+          items: { type: string }
+          example: [POST_CREATE, POST_EDIT, POST_DELETE, PROFILE_EDIT, SITE_EDIT]
+
+    OwnerLoginResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/OwnerLoginVO' }
+
+    IdentityResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/IdentityVO' }
+
+    SiteBasicVO:
+      type: object
+      required: [name, chineseName, description]
+      properties:
+        name: { type: string, example: BinSpace }
+        chineseName: { type: string, example: 玢的空间 }
+        description: { type: string, nullable: true, example: 记录代码，也记录生活。 }
+
+    ProfileStatusVO:
+      type: object
+      required: [label, text, emoji]
+      properties:
+        label: { type: string, nullable: true, example: 空间状态 }
+        text: { type: string, nullable: true, example: 正在写 BinSpace }
+        emoji: { type: string, nullable: true, example: ☕ }
+
+    UpdateProfileStatusDTO:
+      type: object
+      required: [label, text, emoji]
+      properties:
+        label: { type: string, nullable: true, maxLength: 64, example: 空间状态 }
+        text: { type: string, nullable: true, maxLength: 255, example: 正在写 BinSpace }
+        emoji: { type: string, nullable: true, maxLength: 32, example: ☕ }
+
+    ProfileStatsVO:
+      type: object
+      required: [techPostCount, momentCount, guestbookCount]
+      properties:
+        techPostCount: { type: integer, minimum: 0, example: 6 }
+        momentCount: { type: integer, minimum: 0, example: 9 }
+        guestbookCount: { type: integer, minimum: 0, example: 7 }
+
+    ProfileVO:
+      type: object
+      required: [id, userId, name, avatar, role, bio, status, stats, version, updatedAt]
+      properties:
+        id: { $ref: '#/components/schemas/BigIntId' }
+        userId: { $ref: '#/components/schemas/BigIntId' }
+        name: { type: string, example: 玢 }
+        avatar: { type: string, nullable: true, example: /media/avatar.jpg }
+        role: { type: string, nullable: true, example: Java Backend Developer }
+        bio: { type: string, nullable: true, example: 记录代码，也记录生活。 }
+        status: { $ref: '#/components/schemas/ProfileStatusVO' }
+        stats: { $ref: '#/components/schemas/ProfileStatsVO' }
+        version: { type: integer, minimum: 0, example: 2 }
+        updatedAt: { type: string, format: date-time, example: '2026-09-02T10:20:30.123Z' }
+
+    HeroVO:
+      type: object
+      required: [eyebrow, heroTitle, heroSubtitle, desktopVideo, mobileVideo, poster]
+      properties:
+        eyebrow: { type: string, nullable: true, example: BINSPACE · PERSONAL DAYBOOK }
+        heroTitle: { type: string, example: 在暖光里，留下代码与生活。 }
+        heroSubtitle: { type: string, nullable: true, example: 这里收录认真写下的技术文章，也收藏日常时刻。 }
+        desktopVideo: { type: string, nullable: true, example: /media/binspace-hero.mp4 }
+        mobileVideo: { type: string, nullable: true, example: /media/binspace-hero-mobile.mp4 }
+        poster: { type: string, nullable: true, example: /media/binspace-hero.jpg }
+
+    AnnouncementVO:
+      type: object
+      required: [content, enabled]
+      properties:
+        content: { type: string, example: 欢迎来到玢的空间。 }
+        enabled: { type: boolean, example: true }
+
+    MusicVO:
+      type: object
+      required: [title, artist, audioUrl, cover]
+      properties:
+        title: { type: string, example: 空间背景音乐 }
+        artist: { type: string, nullable: true, example: Artist }
+        audioUrl: { type: string, example: /media/music/theme.mp3 }
+        cover: { type: string, nullable: true, example: /media/music/theme.jpg }
+
+    WallpaperVO:
+      type: object
+      required: [desktop, mobile]
+      properties:
+        desktop: { type: string, nullable: true, example: /media/pages/home-beyond-mountain.jpg }
+        mobile: { type: string, nullable: true, example: /media/pages/home-beyond-mountain-mobile.jpg }
+
+    AppearanceVO:
+      type: object
+      required: [layoutMode, backgroundMode, surfaceOpacity, backdropShade, wallpaper, allowVisitorControls]
+      properties:
+        layoutMode: { type: string, enum: [standard, immersive], example: standard }
+        backgroundMode: { type: string, enum: [video, wallpaper], example: wallpaper }
+        surfaceOpacity: { type: number, format: double, minimum: 0, maximum: 1, example: 0.54 }
+        backdropShade: { type: number, format: double, minimum: 0, maximum: 1, example: 0.3 }
+        wallpaper: { $ref: '#/components/schemas/WallpaperVO' }
+        allowVisitorControls: { type: boolean, example: true }
+
+    PageMediaItemVO:
+      type: object
+      required: [video, poster, overlay, motion, effect]
+      properties:
+        video: { type: string, nullable: true, example: /media/pages/archive-horizon-sky.mp4 }
+        poster: { type: string, nullable: true, example: /media/pages/archive-horizon-sky.jpg }
+        overlay: { type: string, nullable: true, example: null }
+        motion: { type: string, nullable: true, example: drift }
+        effect: { type: string, nullable: true, example: petals }
+
+    PageMediaVO:
+      type: object
+      required: [moments, guestbook, tech, archive, about]
+      properties:
+        moments: { $ref: '#/components/schemas/PageMediaItemVO' }
+        guestbook: { $ref: '#/components/schemas/PageMediaItemVO' }
+        tech: { $ref: '#/components/schemas/PageMediaItemVO' }
+        archive: { $ref: '#/components/schemas/PageMediaItemVO' }
+        about: { $ref: '#/components/schemas/PageMediaItemVO' }
+
+    ExternalLinksVO:
+      type: object
+      required: [homepage, github]
+      properties:
+        homepage: { type: string, nullable: true, example: 'https://example.com' }
+        github: { type: string, nullable: true, example: 'https://github.com/example' }
+
+    SiteBootstrapVO:
+      type: object
+      required: [basic, profile, hero, announcement, music, appearance, pageMedia, externalLinks, updatedAt, version]
+      properties:
+        basic: { $ref: '#/components/schemas/SiteBasicVO' }
+        profile: { $ref: '#/components/schemas/ProfileVO' }
+        hero: { $ref: '#/components/schemas/HeroVO' }
+        announcement:
+          anyOf:
+            - { $ref: '#/components/schemas/AnnouncementVO' }
+            - { $ref: '#/components/schemas/NullOnly' }
+        music:
+          anyOf:
+            - { $ref: '#/components/schemas/MusicVO' }
+            - { $ref: '#/components/schemas/NullOnly' }
+        appearance: { $ref: '#/components/schemas/AppearanceVO' }
+        pageMedia: { $ref: '#/components/schemas/PageMediaVO' }
+        externalLinks: { $ref: '#/components/schemas/ExternalLinksVO' }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer, minimum: 0, example: 3 }
+
+    SiteBootstrapResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/SiteBootstrapVO' }
+
+    UpdateProfileDTO:
+      type: object
+      required: [name, avatar, role, bio, status, version]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 64 }
+        avatar: { type: string, nullable: true, maxLength: 1024 }
+        role: { type: string, nullable: true, maxLength: 128 }
+        bio: { type: string, nullable: true, maxLength: 500 }
+        status: { $ref: '#/components/schemas/UpdateProfileStatusDTO' }
+        version: { type: integer, minimum: 0 }
+      example:
+        name: 玢
+        avatar: /media/avatar.jpg
+        role: Java Backend Developer
+        bio: 记录代码，也记录生活。
+        status: { label: 空间状态, text: 正在写 BinSpace, emoji: ☕ }
+        version: 2
+
+    UpdateSiteBasicDTO:
+      type: object
+      required: [name, chineseName, description, version]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 64 }
+        chineseName: { type: string, minLength: 1, maxLength: 64 }
+        description: { type: string, nullable: true, maxLength: 255 }
+        version: { type: integer, minimum: 0 }
+      example: { name: BinSpace, chineseName: 玢的空间, description: 记录代码，也记录生活。, version: 3 }
+
+    UpdateHeroDTO:
+      type: object
+      required: [eyebrow, heroTitle, heroSubtitle, desktopVideo, mobileVideo, poster, version]
+      properties:
+        eyebrow: { type: string, nullable: true, maxLength: 128 }
+        heroTitle: { type: string, minLength: 1, maxLength: 180 }
+        heroSubtitle: { type: string, nullable: true, maxLength: 500 }
+        desktopVideo: { type: string, nullable: true, maxLength: 1024 }
+        mobileVideo: { type: string, nullable: true, maxLength: 1024 }
+        poster: { type: string, nullable: true, maxLength: 1024 }
+        version: { type: integer, minimum: 0 }
+      example:
+        eyebrow: BINSPACE · PERSONAL DAYBOOK
+        heroTitle: 在暖光里，留下代码与生活。
+        heroSubtitle: 记录认真写下的技术文章和日常时刻。
+        desktopVideo: /media/binspace-hero.mp4
+        mobileVideo: /media/binspace-hero-mobile.mp4
+        poster: /media/binspace-hero.jpg
+        version: 3
+
+    UpdateAnnouncementDTO:
+      type: object
+      required: [content, enabled, version]
+      properties:
+        content: { type: string, nullable: true, maxLength: 2000 }
+        enabled: { type: boolean }
+        version: { type: integer, minimum: 0 }
+      example: { content: 欢迎来到玢的空间。, enabled: true, version: 4 }
+
+    UpdateMusicDTO:
+      type: object
+      required: [title, artist, audioUrl, cover, version]
+      properties:
+        title: { type: string, nullable: true, maxLength: 180 }
+        artist: { type: string, nullable: true, maxLength: 180 }
+        audioUrl: { type: string, nullable: true, maxLength: 1024 }
+        cover: { type: string, nullable: true, maxLength: 1024 }
+        version: { type: integer, minimum: 0 }
+      example: { title: 空间背景音乐, artist: Artist, audioUrl: /media/music/theme.mp3, cover: /media/music/theme.jpg, version: 5 }
+
+    UpdateAppearanceDTO:
+      allOf:
+        - { $ref: '#/components/schemas/AppearanceVO' }
+        - type: object
+          required: [version]
+          properties:
+            version: { type: integer, minimum: 0, example: 6 }
+
+    UpdatePageMediaDTO:
+      allOf:
+        - { $ref: '#/components/schemas/PageMediaVO' }
+        - type: object
+          required: [version]
+          properties:
+            version: { type: integer, minimum: 0, example: 7 }
+
+    SiteConfigSectionBase:
+      type: object
+      required: [version, updatedAt]
+      properties:
+        version: { type: integer, minimum: 0, example: 4 }
+        updatedAt: { type: string, format: date-time, example: '2026-09-02T10:20:30.123Z' }
+
+    SiteBasicSectionVO:
+      allOf:
+        - { $ref: '#/components/schemas/SiteConfigSectionBase' }
+        - type: object
+          required: [config]
+          properties:
+            config: { $ref: '#/components/schemas/SiteBasicVO' }
+    HeroSectionVO:
+      allOf:
+        - { $ref: '#/components/schemas/SiteConfigSectionBase' }
+        - type: object
+          required: [config]
+          properties:
+            config: { $ref: '#/components/schemas/HeroVO' }
+    AnnouncementSectionVO:
+      allOf:
+        - { $ref: '#/components/schemas/SiteConfigSectionBase' }
+        - type: object
+          required: [config]
+          properties:
+            config:
+              anyOf:
+                - { $ref: '#/components/schemas/AnnouncementVO' }
+                - { $ref: '#/components/schemas/NullOnly' }
+    MusicSectionVO:
+      allOf:
+        - { $ref: '#/components/schemas/SiteConfigSectionBase' }
+        - type: object
+          required: [config]
+          properties:
+            config:
+              anyOf:
+                - { $ref: '#/components/schemas/MusicVO' }
+                - { $ref: '#/components/schemas/NullOnly' }
+    AppearanceSectionVO:
+      allOf:
+        - { $ref: '#/components/schemas/SiteConfigSectionBase' }
+        - type: object
+          required: [config]
+          properties:
+            config: { $ref: '#/components/schemas/AppearanceVO' }
+    PageMediaSectionVO:
+      allOf:
+        - { $ref: '#/components/schemas/SiteConfigSectionBase' }
+        - type: object
+          required: [config]
+          properties:
+            config: { $ref: '#/components/schemas/PageMediaVO' }
+
+    ProfileResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/ProfileVO' } }
+    SiteBasicSectionResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/SiteBasicSectionVO' } }
+    HeroSectionResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/HeroSectionVO' } }
+    AnnouncementSectionResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/AnnouncementSectionVO' } }
+    MusicSectionResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/MusicSectionVO' } }
+    AppearanceSectionResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/AppearanceSectionVO' } }
+    PageMediaSectionResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/PageMediaSectionVO' } }
+
+    PostAuthorVO:
+      type: object
+      required: [userId, name, avatar]
+      properties:
+        userId: { $ref: '#/components/schemas/BigIntId' }
+        name: { type: string, example: 玢 }
+        avatar: { type: string, nullable: true, example: /media/avatar.jpg }
+
+    MediaVO:
+      type: object
+      required: [id, usageType, mediaType, src, poster, alt, width, height, sortOrder]
+      properties:
+        id: { $ref: '#/components/schemas/BigIntId' }
+        usageType: { type: string, enum: [COVER, CONTENT] }
+        mediaType: { type: string, enum: [IMAGE, VIDEO] }
+        src: { type: string, example: /media/posts/redis-cover.jpg }
+        poster: { type: string, nullable: true }
+        alt: { type: string, nullable: true, example: Redis 库存流程示意图 }
+        width: { type: integer, nullable: true, minimum: 1, example: 1600 }
+        height: { type: integer, nullable: true, minimum: 1, example: 900 }
+        sortOrder: { type: integer, minimum: 0, example: 0 }
+
+    MediaInputDTO:
+      type: object
+      required: [src, mediaType, poster, alt, width, height, sortOrder]
+      properties:
+        src: { type: string, minLength: 1, maxLength: 1024 }
+        mediaType: { type: string, enum: [IMAGE, VIDEO] }
+        poster: { type: string, nullable: true, maxLength: 1024 }
+        alt: { type: string, nullable: true, maxLength: 255 }
+        width: { type: integer, nullable: true, minimum: 1 }
+        height: { type: integer, nullable: true, minimum: 1 }
+        sortOrder: { type: integer, minimum: 0 }
+      example: { src: /media/posts/redis-cover.jpg, mediaType: IMAGE, poster: null, alt: Redis 库存流程示意图, width: 1600, height: 900, sortOrder: 0 }
+
+    CategoryVO:
+      type: object
+      required: [id, name, slug, description, active]
+      properties:
+        id: { $ref: '#/components/schemas/BigIntId' }
+        name: { type: string, example: Redis }
+        slug: { type: string, example: redis }
+        description: { type: string, nullable: true, example: Redis 实践记录 }
+        active: { type: boolean, example: true }
+
+    TagVO:
+      type: object
+      required: [id, name, slug, active]
+      properties:
+        id: { $ref: '#/components/schemas/BigIntId' }
+        name: { type: string, example: Lua }
+        slug: { type: string, example: lua }
+        active: { type: boolean, example: true }
+
+    PostSummaryVO:
+      type: object
+      required: [id, type, slug, title, summary, content, author, category, tags, cover, images, createdAt, updatedAt, publishedAt, readingTime, status, likeCount, likedByMe, commentCount, version]
+      properties:
+        id: { $ref: '#/components/schemas/BigIntId' }
+        type: { type: string, enum: [TECH, MOMENT] }
+        slug: { type: string, nullable: true }
+        title: { type: string, nullable: true }
+        summary: { type: string, nullable: true }
+        content: { type: string, nullable: true }
+        author: { $ref: '#/components/schemas/PostAuthorVO' }
+        category:
+          anyOf:
+            - { $ref: '#/components/schemas/CategoryVO' }
+            - { $ref: '#/components/schemas/NullOnly' }
+        tags:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/TagVO' }
+        cover:
+          anyOf:
+            - { $ref: '#/components/schemas/MediaVO' }
+            - { $ref: '#/components/schemas/NullOnly' }
+        images:
+          type: array
+          items: { $ref: '#/components/schemas/MediaVO' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        publishedAt: { type: string, format: date-time, nullable: true }
+        readingTime: { type: integer, minimum: 1, nullable: true }
+        status: { type: string, enum: [DRAFT, SCHEDULED, PUBLISHED], nullable: true }
+        likeCount: { type: integer, minimum: 0 }
+        likedByMe: { type: boolean, description: 未登录时固定为 false, example: false }
+        commentCount: { type: integer, minimum: 0 }
+        version: { type: integer, minimum: 0, nullable: true }
+
+    TechDetailVO:
+      allOf:
+        - { $ref: '#/components/schemas/PostSummaryVO' }
+        - type: object
+          required: [contentFormat, relatedPosts]
+          properties:
+            contentFormat: { type: string, enum: [MARKDOWN, PLAIN_TEXT] }
+            relatedPosts:
+              type: array
+              items: { $ref: '#/components/schemas/PostSummaryVO' }
+      example:
+        id: '1909508401234567168'
+        type: TECH
+        slug: redis-lua-stock-control
+        title: Redis + Lua 如何解决库存超卖
+        summary: 用原子脚本收紧库存扣减边界。
+        content: "# 库存扣减\n\n正文内容。"
+        contentFormat: MARKDOWN
+        author: { userId: '1909508000000000001', name: 玢, avatar: null }
+        category: { id: '1909508100000000001', name: Redis, slug: redis, description: null, active: true }
+        tags: [{ id: '1909508200000000001', name: Lua, slug: lua, active: true }]
+        cover: null
+        images: []
+        createdAt: '2026-09-02T10:00:00.000Z'
+        updatedAt: '2026-09-02T10:20:00.000Z'
+        publishedAt: '2026-09-02T10:20:00.000Z'
+        readingTime: 8
+        status: PUBLISHED
+        likeCount: 0
+        commentCount: 0
+        version: 0
+        relatedPosts: []
+
+    MomentDetailVO:
+      allOf:
+        - { $ref: '#/components/schemas/PostSummaryVO' }
+        - type: object
+          required: [contentFormat]
+          properties:
+            contentFormat: { type: string, enum: [PLAIN_TEXT] }
+      example:
+        id: '1909508401234567170'
+        type: MOMENT
+        slug: null
+        title: null
+        summary: null
+        content: 今天把 BinSpace 的页面整理好了。
+        contentFormat: PLAIN_TEXT
+        author: { userId: '1909508000000000001', name: 玢, avatar: null }
+        category: null
+        tags: []
+        cover: null
+        images: []
+        createdAt: '2026-09-02T11:00:00.000Z'
+        updatedAt: '2026-09-02T11:00:00.000Z'
+        publishedAt: '2026-09-02T11:00:00.000Z'
+        readingTime: null
+        status: PUBLISHED
+        likeCount: 0
+        commentCount: 0
+        version: 0
+
+    CreateTechPostDTO:
+      type: object
+      required: [title, summary, content, contentFormat, categoryId, tagIds, cover, status]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 180 }
+        summary: { type: string, minLength: 1, maxLength: 600 }
+        content: { type: string, minLength: 1 }
+        contentFormat: { type: string, enum: [MARKDOWN, PLAIN_TEXT] }
+        categoryId: { $ref: '#/components/schemas/BigIntId' }
+        tagIds:
+          type: array
+          maxItems: 10
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/BigIntId' }
+        cover:
+          anyOf:
+            - { $ref: '#/components/schemas/MediaInputDTO' }
+            - { $ref: '#/components/schemas/NullOnly' }
+        status: { type: string, enum: [DRAFT, PUBLISHED] }
+      example:
+        title: Redis + Lua 如何解决库存超卖
+        summary: 用原子脚本收紧库存扣减边界。
+        content: "# 库存扣减\n\n正文内容。"
+        contentFormat: MARKDOWN
+        categoryId: '1909508100000000001'
+        tagIds: ['1909508200000000001']
+        cover: null
+        status: DRAFT
+
+    UpdateTechPostDTO:
+      allOf:
+        - { $ref: '#/components/schemas/CreateTechPostDTO' }
+        - type: object
+          required: [version]
+          properties:
+            version: { type: integer, minimum: 0, example: 2 }
+
+    CreateMomentDTO:
+      type: object
+      required: [content, images, status]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 2000 }
+        images:
+          type: array
+          maxItems: 9
+          items: { $ref: '#/components/schemas/MediaInputDTO' }
+        status: { type: string, enum: [DRAFT, PUBLISHED] }
+      example: { content: 今天把 BinSpace 的页面整理好了。, images: [], status: PUBLISHED }
+
+    UpdateMomentDTO:
+      allOf:
+        - { $ref: '#/components/schemas/CreateMomentDTO' }
+        - type: object
+          required: [version]
+          properties:
+            version: { type: integer, minimum: 0, example: 1 }
+
+    PostPageVO:
+      type: object
+      required: [items, page, pageSize, total, totalPages, hasMore]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/PostSummaryVO' }
+        page: { type: integer, minimum: 1, example: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 50, example: 10 }
+        total: { type: integer, minimum: 0, example: 16 }
+        totalPages: { type: integer, minimum: 0, example: 2 }
+        hasMore: { type: boolean, example: true }
+
+    PostPageResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/PostPageVO' } }
+    TechDetailResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/TechDetailVO' } }
+    MomentDetailResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/MomentDetailVO' } }
+
+    ArchiveItemVO:
+      type: object
+      required: [id, type, slug, label, publishedAt]
+      properties:
+        id: { $ref: '#/components/schemas/BigIntId' }
+        type: { type: string, enum: [TECH, MOMENT] }
+        slug: { type: string, nullable: true }
+        label: { type: string, example: Redis + Lua 如何解决库存超卖 }
+        publishedAt: { type: string, format: date-time }
+    ArchiveMonthVO:
+      type: object
+      required: [month, items]
+      properties:
+        month: { type: integer, minimum: 1, maximum: 12, example: 9 }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ArchiveItemVO' }
+    ArchiveYearVO:
+      type: object
+      required: [year, months]
+      properties:
+        year: { type: integer, example: 2026 }
+        months:
+          type: array
+          items: { $ref: '#/components/schemas/ArchiveMonthVO' }
+    ArchiveVO:
+      type: object
+      required: [groups, page, pageSize, total, totalPages, hasMore]
+      properties:
+        groups:
+          type: array
+          items: { $ref: '#/components/schemas/ArchiveYearVO' }
+        page: { type: integer, minimum: 1, example: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 50, example: 10 }
+        total: { type: integer, minimum: 0, example: 16 }
+        totalPages: { type: integer, minimum: 0, example: 2 }
+        hasMore: { type: boolean, example: true }
+    ArchiveResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/ArchiveVO' } }
+
+    CategoryAdminVO:
+      allOf:
+        - { $ref: '#/components/schemas/CategoryVO' }
+        - type: object
+          required: [sortOrder, version, updatedAt]
+          properties:
+            sortOrder: { type: integer, example: 10 }
+            version: { type: integer, minimum: 0, example: 0 }
+            updatedAt: { type: string, format: date-time }
+    TagAdminVO:
+      allOf:
+        - { $ref: '#/components/schemas/TagVO' }
+        - type: object
+          required: [updatedAt]
+          properties:
+            updatedAt: { type: string, format: date-time }
+
+    CreateCategoryDTO:
+      type: object
+      required: [name, slug, description, sortOrder]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 64 }
+        slug: { type: string, nullable: true, maxLength: 80 }
+        description: { type: string, nullable: true, maxLength: 255 }
+        sortOrder: { type: integer }
+      example: { name: Redis, slug: redis, description: Redis 实践记录, sortOrder: 10 }
+    UpdateCategoryDTO:
+      type: object
+      required: [name, slug, description, sortOrder, version]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 64 }
+        slug: { type: string, minLength: 1, maxLength: 80 }
+        description: { type: string, nullable: true, maxLength: 255 }
+        sortOrder: { type: integer }
+        version: { type: integer, minimum: 0 }
+      example: { name: Redis, slug: redis, description: Redis 与缓存实践, sortOrder: 10, version: 1 }
+    CreateTagDTO:
+      type: object
+      required: [name, slug]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 64 }
+        slug: { type: string, nullable: true, maxLength: 80 }
+      example: { name: Lua, slug: lua }
+    UpdateTagDTO:
+      type: object
+      required: [name, slug]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 64 }
+        slug: { type: string, minLength: 1, maxLength: 80 }
+      example: { name: Lua, slug: lua }
+
+    CategoryPageVO:
+      type: object
+      required: [items, page, pageSize, total, totalPages, hasMore]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/CategoryVO' } }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 50 }
+        total: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+        hasMore: { type: boolean }
+    CategoryAdminPageVO:
+      type: object
+      required: [items, page, pageSize, total, totalPages, hasMore]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/CategoryAdminVO' } }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 50 }
+        total: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+        hasMore: { type: boolean }
+    TagPageVO:
+      type: object
+      required: [items, page, pageSize, total, totalPages, hasMore]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/TagVO' } }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 50 }
+        total: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+        hasMore: { type: boolean }
+    TagAdminPageVO:
+      type: object
+      required: [items, page, pageSize, total, totalPages, hasMore]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/TagAdminVO' } }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 50 }
+        total: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+        hasMore: { type: boolean }
+
+    CategoryPageResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/CategoryPageVO' } }
+    CategoryAdminPageResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/CategoryAdminPageVO' } }
+    CategoryAdminResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/CategoryAdminVO' } }
+    TagPageResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/TagPageVO' } }
+    TagAdminPageResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/TagAdminPageVO' } }
+    TagAdminResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/TagAdminVO' } }
+
+    ReplyDTO:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 2000 }
+      example: { content: 谢谢你的留言。 }
+    ReplyAuthorVO:
+      type: object
+      required: [userId, name, avatar]
+      properties:
+        userId: { $ref: '#/components/schemas/BigIntId' }
+        name: { type: string, example: 玢 }
+        avatar: { type: string, nullable: true, example: /media/avatar.jpg }
+    ReplyVO:
+      type: object
+      required: [id, author, content, createdAt]
+      properties:
+        id: { $ref: '#/components/schemas/BigIntId' }
+        author: { $ref: '#/components/schemas/ReplyAuthorVO' }
+        content: { type: string, example: 谢谢你的留言。 }
+        createdAt: { type: string, format: date-time }
+    VisitorAuthorVO:
+      type: object
+      required: [name, avatar]
+      properties:
+        name: { type: string, example: 游客 }
+        avatar: { type: string, nullable: true }
+    CommentVO:
+      type: object
+      required: [id, postId, author, content, createdAt, ownedByMe, ownerReply]
+      properties:
+        id: { $ref: '#/components/schemas/BigIntId' }
+        postId: { $ref: '#/components/schemas/BigIntId' }
+        author: { $ref: '#/components/schemas/VisitorAuthorVO' }
+        content: { type: string, example: 这篇文章很有帮助。 }
+        createdAt: { type: string, format: date-time }
+        ownedByMe: { type: boolean, description: 当前登录用户是否为作者；匿名时为 false, example: false }
+        ownerReply:
+          anyOf:
+            - { $ref: '#/components/schemas/ReplyVO' }
+            - { $ref: '#/components/schemas/NullOnly' }
+    GuestbookVO:
+      type: object
+      required: [id, author, content, createdAt, ownedByMe, ownerReply]
+      properties:
+        id: { $ref: '#/components/schemas/BigIntId' }
+        author: { $ref: '#/components/schemas/VisitorAuthorVO' }
+        content: { type: string, example: 来逛空间啦。 }
+        createdAt: { type: string, format: date-time }
+        ownedByMe: { type: boolean, description: 当前登录用户是否为作者；匿名时为 false, example: false }
+        ownerReply:
+          anyOf:
+            - { $ref: '#/components/schemas/ReplyVO' }
+            - { $ref: '#/components/schemas/NullOnly' }
+
+    CommentPageVO:
+      type: object
+      required: [items, page, pageSize, total, totalPages, hasMore]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/CommentVO' } }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 50 }
+        total: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+        hasMore: { type: boolean }
+    GuestbookPageVO:
+      type: object
+      required: [items, page, pageSize, total, totalPages, hasMore]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/GuestbookVO' } }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 50 }
+        total: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+        hasMore: { type: boolean }
+    CommentPageResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/CommentPageVO' } }
+    CommentResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/CommentVO' } }
+    GuestbookPageResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/GuestbookPageVO' } }
+    GuestbookResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/GuestbookVO' } }
+
+    LoginDTO:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, minLength: 1, maxLength: 64, example: bin }
+        password: { type: string, format: password, minLength: 1, maxLength: 128, writeOnly: true, example: BinSpace_2026 }
+    LoginResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/LoginVO' }
+    LoginVO:
+      allOf:
+        - { $ref: '#/components/schemas/OwnerLoginVO' }
+      description: Visitor 与 Owner 共用的登录结果；identity.role 表示真实身份。
+    RegisterVisitorDTO:
+      type: object
+      required: [username, password, displayName]
+      properties:
+        username: { type: string, minLength: 3, maxLength: 64, pattern: '^[A-Za-z0-9_]+$', example: warm_reader }
+        password: { type: string, format: password, minLength: 8, maxLength: 128, writeOnly: true, example: Reader_2026 }
+        displayName: { type: string, minLength: 1, maxLength: 64, example: 暖光访客 }
+    CreateCommentDTO:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 2000, example: 这篇文章很有帮助。 }
+    UpdateCommentDTO:
+      allOf:
+        - { $ref: '#/components/schemas/CreateCommentDTO' }
+    CreateGuestbookDTO:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 2000, example: 来都来了，留下一个脚印。 }
+    UpdateGuestbookDTO:
+      allOf:
+        - { $ref: '#/components/schemas/CreateGuestbookDTO' }
+
+    LikeStateVO:
+      type: object
+      required: [postId, liked, likeCount]
+      properties:
+        postId: { $ref: '#/components/schemas/BigIntId' }
+        liked: { type: boolean, example: true }
+        likeCount: { type: integer, minimum: 0, example: 13 }
+    LikeStateResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/LikeStateVO' } }
+
+    MediaUsageType:
+      type: string
+      enum: [AVATAR, HERO, POST_COVER, POST_CONTENT, MUSIC, PAGE_BACKGROUND]
+    UploadMediaForm:
+      type: object
+      required: [file, usageType]
+      properties:
+        file: { type: string, format: binary }
+        usageType: { $ref: '#/components/schemas/MediaUsageType' }
+    MediaAssetVO:
+      type: object
+      required: [id, mediaType, usageType, url, originalName, contentType, size, createdAt]
+      properties:
+        id: { $ref: '#/components/schemas/BigIntId' }
+        mediaType: { type: string, enum: [IMAGE, VIDEO, AUDIO], example: IMAGE }
+        usageType: { $ref: '#/components/schemas/MediaUsageType' }
+        url: { type: string, format: uri, example: https://cdn.example.com/binspace/cover.webp }
+        originalName: { type: string, example: redis-cover.png }
+        contentType: { type: string, example: image/webp }
+        size: { type: integer, format: int64, minimum: 0, example: 245760 }
+        width: { type: integer, nullable: true, minimum: 1, example: 1600 }
+        height: { type: integer, nullable: true, minimum: 1, example: 900 }
+        durationSeconds: { type: number, format: double, nullable: true, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+    MediaAssetPageVO:
+      type: object
+      required: [items, page, pageSize, total, totalPages, hasMore]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/MediaAssetVO' } }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 50 }
+        total: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+        hasMore: { type: boolean }
+    MediaAssetResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/MediaAssetVO' } }
+    MediaAssetPageResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/MediaAssetPageVO' } }
+
+    NotificationVO:
+      type: object
+      required: [id, type, resourceType, resourceId, summary, read, createdAt]
+      properties:
+        id: { $ref: '#/components/schemas/BigIntId' }
+        type: { type: string, enum: [COMMENT_CREATED, GUESTBOOK_CREATED, COMMENT_REPLIED, GUESTBOOK_REPLIED] }
+        actor:
+          anyOf:
+            - { $ref: '#/components/schemas/VisitorAuthorVO' }
+            - { $ref: '#/components/schemas/NullOnly' }
+        resourceType: { type: string, enum: [POST, COMMENT, GUESTBOOK] }
+        resourceId: { $ref: '#/components/schemas/BigIntId' }
+        summary: { type: string, maxLength: 200, example: 暖光访客评论了你的文章 }
+        read: { type: boolean, example: false }
+        createdAt: { type: string, format: date-time }
+    NotificationPageVO:
+      type: object
+      required: [items, page, pageSize, total, totalPages, hasMore]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/NotificationVO' } }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 50 }
+        total: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+        hasMore: { type: boolean }
+    UnreadCountVO:
+      type: object
+      required: [unreadCount]
+      properties:
+        unreadCount: { type: integer, minimum: 0, example: 0 }
+    NotificationResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/NotificationVO' } }
+    NotificationPageResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/NotificationPageVO' } }
+    UnreadCountResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/UnreadCountVO' } }
+
+    SearchResultVO:
+      type: object
+      required: [id, type, excerpt, highlights, publishedAt]
+      properties:
+        id: { $ref: '#/components/schemas/BigIntId' }
+        type: { type: string, enum: [TECH, MOMENT] }
+        slug: { type: string, nullable: true, example: redis-lua-stock-control }
+        title: { type: string, nullable: true, example: Redis + Lua 如何解决库存超卖 }
+        excerpt: { type: string, example: 使用 Redis Lua 将检查与扣减合并为原子操作。 }
+        highlights: { type: array, items: { type: string }, example: ['使用 <em>Redis</em> Lua'] }
+        publishedAt: { type: string, format: date-time }
+    SearchResultPageVO:
+      type: object
+      required: [items, page, pageSize, total, totalPages, hasMore]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/SearchResultVO' } }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 50 }
+        total: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+        hasMore: { type: boolean }
+    SearchResultPageResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/SearchResultPageVO' } }
+    AiSearchDTO:
+      type: object
+      required: [question]
+      properties:
+        question: { type: string, minLength: 1, maxLength: 500, example: 这套项目里 Redis 主要解决了什么问题？ }
+    AiSearchSourceVO:
+      type: object
+      required: [postId, title, excerpt]
+      properties:
+        postId: { $ref: '#/components/schemas/BigIntId' }
+        slug: { type: string, nullable: true }
+        title: { type: string }
+        excerpt: { type: string }
+    AiSearchVO:
+      type: object
+      required: [answer, sources]
+      properties:
+        answer: { type: string, example: BinSpace 当前用 Redis 保存可撤销的 JWT Token Session。 }
+        sources: { type: array, items: { $ref: '#/components/schemas/AiSearchSourceVO' } }
+    AiSearchResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/AiSearchVO' } }
+    ReindexTaskVO:
+      type: object
+      required: [taskId, status, createdAt]
+      properties:
+        taskId: { type: string, example: 01JREINDEXTASK }
+        status: { type: string, enum: [QUEUED, RUNNING, SUCCEEDED, FAILED], example: QUEUED }
+        createdAt: { type: string, format: date-time }
+        finishedAt: { type: string, format: date-time, nullable: true }
+        indexedCount: { type: integer, minimum: 0, nullable: true }
+        failureMessage: { type: string, nullable: true }
+    ReindexTaskResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/ReindexTaskVO' } }
+    PostListResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { type: array, items: { $ref: '#/components/schemas/PostSummaryVO' } }
+
+    SchedulePostDTO:
+      type: object
+      required: [publishAt, version]
+      properties:
+        publishAt: { type: string, format: date-time, example: '2026-09-20T12:00:00Z' }
+        version: { type: integer, minimum: 0, example: 3 }
+    AutosavePostDTO:
+      type: object
+      required: [type, payload, baseVersion]
+      properties:
+        type: { type: string, enum: [TECH, MOMENT] }
+        payload: { type: object, additionalProperties: true, description: 与对应 Create/Update DTO 的可编辑字段相同 }
+        baseVersion: { type: integer, minimum: 0, example: 3 }
+    AutosaveVO:
+      type: object
+      required: [postId, savedAt, baseVersion]
+      properties:
+        postId: { $ref: '#/components/schemas/BigIntId' }
+        savedAt: { type: string, format: date-time }
+        baseVersion: { type: integer, minimum: 0 }
+    AutosaveResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/AutosaveVO' } }
+    PostVersionVO:
+      type: object
+      required: [id, postId, versionNo, summary, createdAt]
+      properties:
+        id: { $ref: '#/components/schemas/BigIntId' }
+        postId: { $ref: '#/components/schemas/BigIntId' }
+        versionNo: { type: integer, minimum: 1 }
+        summary: { type: string, maxLength: 200 }
+        createdAt: { type: string, format: date-time }
+    PostVersionDetailVO:
+      allOf:
+        - { $ref: '#/components/schemas/PostVersionVO' }
+        - type: object
+          required: [type, snapshot]
+          properties:
+            type: { type: string, enum: [TECH, MOMENT] }
+            snapshot: { type: object, additionalProperties: true, description: 保存时的完整可编辑字段快照 }
+    PostVersionPageVO:
+      type: object
+      required: [items, page, pageSize, total, totalPages, hasMore]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/PostVersionVO' } }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 50 }
+        total: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+        hasMore: { type: boolean }
+    PostVersionPageResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/PostVersionPageVO' } }
+    PostVersionDetailResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/PostVersionDetailVO' } }
+    RestoreVersionDTO:
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer, minimum: 0, example: 5 }
+    BatchPostItemDTO:
+      type: object
+      required: [postId, version]
+      properties:
+        postId: { $ref: '#/components/schemas/BigIntId' }
+        version: { type: integer, minimum: 0, example: 3 }
+    BatchPostDTO:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/BatchPostItemDTO' }
+          example: [{ postId: '1909508401234567168', version: 3 }, { postId: '1909508401234567169', version: 1 }]
+    BatchPostFailureVO:
+      type: object
+      required: [postId, code, message]
+      properties:
+        postId: { $ref: '#/components/schemas/BigIntId' }
+        code: { type: string, example: VERSION_CONFLICT }
+        message: { type: string, example: 数据已被修改 }
+    BatchPostResultVO:
+      type: object
+      required: [succeededIds, failed]
+      properties:
+        succeededIds: { type: array, items: { $ref: '#/components/schemas/BigIntId' } }
+        failed: { type: array, items: { $ref: '#/components/schemas/BatchPostFailureVO' } }
+    BatchPostResultResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/BatchPostResultVO' } }
+    UpdateSlugDTO:
+      type: object
+      required: [slug, version]
+      properties:
+        slug: { type: string, minLength: 1, maxLength: 180, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$', example: redis-lua-stock-control }
+        version: { type: integer, minimum: 0, example: 3 }
+    MarkdownImportVO:
+      type: object
+      required: [title, content, frontMatter]
+      properties:
+        title: { type: string, example: Redis + Lua 如何解决库存超卖 }
+        content: { type: string, example: '# Redis + Lua\n\n正文...' }
+        frontMatter: { type: object, additionalProperties: true, example: { tags: [Redis, Lua] } }
+    MarkdownImportResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/MarkdownImportVO' } }
+    PostSummaryResponse:
+      allOf:
+        - { $ref: '#/components/schemas/ApiSuccessBase' }
+        - type: object
+          required: [data]
+          properties: { data: { $ref: '#/components/schemas/PostSummaryVO' } }

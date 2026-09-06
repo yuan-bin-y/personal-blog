@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.byy.blogprojectbackend.category.mapper.CategoryMapper">
+    <sql id="columns">id,name,slug,description,sort_order,created_at,updated_at,version,deleted,deleted_at</sql>
+    <select id="countPublic" resultType="long">SELECT COUNT(*) FROM category c WHERE c.deleted=0 <if test="used">AND EXISTS(SELECT 1 FROM post p WHERE p.category_id=c.id AND p.type='TECH' AND p.deleted=0 AND p.status='PUBLISHED' AND p.published_at&lt;=UTC_TIMESTAMP(3))</if></select>
+    <select id="selectPublic" resultType="com.byy.blogprojectbackend.category.entity.Category">SELECT <include refid="columns"/> FROM category c WHERE c.deleted=0 <if test="used">AND EXISTS(SELECT 1 FROM post p WHERE p.category_id=c.id AND p.type='TECH' AND p.deleted=0 AND p.status='PUBLISHED' AND p.published_at&lt;=UTC_TIMESTAMP(3))</if> ORDER BY sort_order,id LIMIT #{pageSize} OFFSET #{offset}</select>
+    <select id="countOwner" resultType="long">SELECT COUNT(*) FROM category <where><if test="status=='ACTIVE'">deleted=0</if><if test="status=='DISABLED'">deleted=1</if></where></select>
+    <select id="selectOwner" resultType="com.byy.blogprojectbackend.category.entity.Category">SELECT <include refid="columns"/> FROM category <where><if test="status=='ACTIVE'">deleted=0</if><if test="status=='DISABLED'">deleted=1</if></where> ORDER BY deleted,sort_order,id LIMIT #{pageSize} OFFSET #{offset}</select>
+    <select id="selectAnyById" resultType="com.byy.blogprojectbackend.category.entity.Category">SELECT <include refid="columns"/> FROM category WHERE id=#{id} LIMIT 1</select>
+    <update id="updateWithVersion">UPDATE category SET name=#{category.name},slug=#{category.slug},description=#{category.description},sort_order=#{category.sortOrder},version=version+1 WHERE id=#{category.id} AND deleted=0 AND version=#{version}</update>
+    <update id="softDelete">UPDATE category SET deleted=1,deleted_at=UTC_TIMESTAMP(3),version=version+1 WHERE id=#{id} AND deleted=0 AND version=#{version}</update>
+</mapper>
