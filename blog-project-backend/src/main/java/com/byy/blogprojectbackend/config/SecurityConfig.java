@@ -139,6 +139,13 @@ public class SecurityConfig {
                         )
                         .authenticated()
 
+                        // 登录后的 Visitor 或 Owner 才能点赞公开 Post。
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/posts/*/like"
+                        )
+                        .authenticated()
+
                         // 注册和登录接口。
                         .requestMatchers(
                                 HttpMethod.POST,

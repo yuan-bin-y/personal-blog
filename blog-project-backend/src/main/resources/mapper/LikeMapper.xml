@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.byy.blogprojectbackend.like.mapper.LikeMapper">
+
+    <select id="selectPublicLikeCount"
+            resultType="java.lang.Integer">
+        SELECT like_count
+        FROM post
+        WHERE id = #{postId}
+        AND deleted = 0
+        AND status = 'PUBLISHED'
+        AND published_at IS NOT NULL
+        AND published_at &lt;= UTC_TIMESTAMP(3)
+        LIMIT 1
+    </select>
+
+    <insert id="insertIgnore">
+        INSERT IGNORE INTO post_like (
+        id,
+        post_id,
+        user_id
+        )
+        VALUES (
+        #{postLike.id},
+        #{postLike.postId},
+        #{postLike.userId}
+        )
+    </insert>
+
+    <update id="incrementPublicLikeCount">
+        UPDATE post
+        SET like_count = like_count + 1
+        WHERE id = #{postId}
+        AND deleted = 0
+        AND status = 'PUBLISHED'
+        AND published_at IS NOT NULL
+        AND published_at &lt;= UTC_TIMESTAMP(3)
+    </update>
+
+</mapper>
