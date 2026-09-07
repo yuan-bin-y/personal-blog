@@ -123,6 +123,22 @@ public class SecurityConfig {
                         )
                         .authenticated()
 
+                        // 登录用户可发布留言；修改和删除的归属由 Guestbook Service 校验。
+                        .requestMatchers(HttpMethod.POST, "/api/guestbook")
+                        .authenticated()
+
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/guestbook/*"
+                        )
+                        .authenticated()
+
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/guestbook/*"
+                        )
+                        .authenticated()
+
                         // 注册和登录接口。
                         .requestMatchers(
                                 HttpMethod.POST,

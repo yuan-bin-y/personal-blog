@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 @Data
 public class GuestbookRow {
     private Long id;
+    private Long authorUserId;
     private String authorName;
     private String authorAvatar;
     private String content;

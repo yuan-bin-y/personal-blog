@@ -3,6 +3,8 @@ package com.byy.blogprojectbackend.guestbook.controller;
 import com.byy.blogprojectbackend.auth.token.JwtTokenService;
 import com.byy.blogprojectbackend.common.result.Result;
 import com.byy.blogprojectbackend.common.vo.PageVO;
+import com.byy.blogprojectbackend.guestbook.dto.CreateGuestbookDTO;
+import com.byy.blogprojectbackend.guestbook.dto.UpdateGuestbookDTO;
 import com.byy.blogprojectbackend.guestbook.service.GuestbookService;
 import com.byy.blogprojectbackend.guestbook.vo.GuestbookVO;
 import com.byy.blogprojectbackend.interaction.dto.ReplyDTO;
@@ -29,9 +31,40 @@ public class GuestbookController {
     @GetMapping("/api/guestbook")
     public Result<PageVO<GuestbookVO>> list(
             @RequestParam(defaultValue = "1") @Min(1) int page,
-            @RequestParam(defaultValue = "10") @Min(1) @Max(50) int pageSize
+            @RequestParam(defaultValue = "10") @Min(1) @Max(50) int pageSize,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt
     ) {
-        return Result.success(guestbookService.list(page, pageSize));
+        return Result.success(guestbookService.list(page, pageSize, currentUserIdOrNull(jwt)));
+    }
+
+    /** 登录后的 Visitor 或 Owner 发布一条顶层空间留言。 */
+    @PostMapping("/api/guestbook")
+    public ResponseEntity<Result<GuestbookVO>> create(
+            @Valid @RequestBody CreateGuestbookDTO dto,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt
+    ) {
+        GuestbookVO entry = guestbookService.create(dto, requiredUserId(jwt));
+        return ResponseEntity.status(HttpStatus.CREATED).body(Result.success(entry));
+    }
+
+    /** 登录用户修改自己发布的顶层留言。 */
+    @PutMapping("/api/guestbook/{entryId}")
+    public Result<GuestbookVO> updateOwnEntry(
+            @PathVariable @Positive Long entryId,
+            @Valid @RequestBody UpdateGuestbookDTO dto,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt
+    ) {
+        return Result.success(guestbookService.updateOwnEntry(entryId, dto, requiredUserId(jwt)));
+    }
+
+    /** 登录用户软删除自己发布的顶层留言及其 Owner 回复。 */
+    @DeleteMapping("/api/guestbook/{entryId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteOwnEntry(
+            @PathVariable @Positive Long entryId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt
+    ) {
+        guestbookService.deleteOwnEntry(entryId, requiredUserId(jwt));
     }
 
     @PostMapping("/api/owner/guestbook/{entryId}/reply")
@@ -43,7 +76,7 @@ public class GuestbookController {
         ReplyResult<GuestbookVO> result = guestbookService.reply(
                 entryId,
                 dto,
-                ownerId(jwt)
+                requiredUserId(jwt)
         );
 
         return ResponseEntity
@@ -57,10 +90,14 @@ public class GuestbookController {
             @PathVariable @Positive Long entryId,
             @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt
     ) {
-        guestbookService.delete(entryId, ownerId(jwt));
+        guestbookService.delete(entryId, requiredUserId(jwt));
     }
 
-    private Long ownerId(Jwt jwt) {
+    private Long requiredUserId(Jwt jwt) {
         return Long.valueOf(jwt.getClaimAsString(JwtTokenService.CLAIM_USER_ID));
+    }
+
+    private Long currentUserIdOrNull(Jwt jwt) {
+        return jwt == null ? null : requiredUserId(jwt);
     }
 }

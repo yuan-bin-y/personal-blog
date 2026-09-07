@@ -16,6 +16,9 @@ public interface GuestbookMapper {
 
     List<GuestbookRow> selectPage(@Param("offset") long offset,@Param("pageSize") int pageSize);
     GuestbookRow selectTopLevelView(@Param("id") Long id);
+    int insertTopLevel(@Param("entry") GuestbookEntry entry);
+    int updateOwnEntry(@Param("id") Long id, @Param("userId") Long userId, @Param("content") String content);
+    int softDeleteOwnEntry(@Param("id") Long id, @Param("userId") Long userId);
     GuestbookEntry selectAny(@Param("id") Long id);
     GuestbookEntry selectReplyAny(@Param("parentId") Long parentId);
     void insertReply(@Param("reply") GuestbookEntry reply);
