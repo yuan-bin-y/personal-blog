@@ -116,6 +116,19 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    /** 处理已登录用户对他人资源执行修改、删除等越权操作。 */
+    @ExceptionHandler(ForbiddenOperationException.class)
+    public ResponseEntity<Result<Void>> handleForbiddenOperation(
+            ForbiddenOperationException exception
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(Result.failure(
+                        ApiErrorCode.FORBIDDEN,
+                        exception.getMessage()
+                ));
+    }
+
     /** 处理路径参数或查询参数无法转换为目标类型。 */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Result<Map<String, String>>> handleTypeMismatch(

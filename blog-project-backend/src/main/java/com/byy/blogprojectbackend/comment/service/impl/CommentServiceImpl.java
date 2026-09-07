@@ -1,6 +1,7 @@
 package com.byy.blogprojectbackend.comment.service.impl;
 
 import com.byy.blogprojectbackend.comment.dto.CreateCommentDTO;
+import com.byy.blogprojectbackend.comment.dto.UpdateCommentDTO;
 import com.byy.blogprojectbackend.comment.entity.Comment;
 import com.byy.blogprojectbackend.comment.mapper.CommentMapper;
 import com.byy.blogprojectbackend.comment.mapper.projection.CommentRow;
@@ -8,6 +9,7 @@ import com.byy.blogprojectbackend.comment.service.CommentService;
 import com.byy.blogprojectbackend.comment.vo.CommentVO;
 import com.byy.blogprojectbackend.common.exception.ResourceConflictException;
 import com.byy.blogprojectbackend.common.exception.ResourceNotFoundException;
+import com.byy.blogprojectbackend.common.exception.ForbiddenOperationException;
 import com.byy.blogprojectbackend.common.id.IdGenerator;
 import com.byy.blogprojectbackend.common.vo.PageVO;
 import com.byy.blogprojectbackend.interaction.dto.ReplyDTO;
@@ -101,6 +103,41 @@ public class CommentServiceImpl implements CommentService {
         }
 
         return toVO(requireView(comment.getId()), userId);
+    }
+
+    /**
+     * 只允许作者修改自己发布的顶层评论。
+     * Service 先区分 404/403，UPDATE 再携带 userId 条件作为最终权限防线。
+     */
+    @Override
+    @Transactional
+    public CommentVO updateOwnComment(
+            Long commentId,
+            UpdateCommentDTO dto,
+            Long userId
+    ) {
+        Comment comment = commentMapper.selectAny(commentId);
+        if (comment == null
+                || Boolean.TRUE.equals(comment.getDeleted())
+                || comment.getParentId() != null) {
+            throw new ResourceNotFoundException("评论不存在");
+        }
+
+        if (!userId.equals(comment.getAuthorUserId())) {
+            throw new ForbiddenOperationException("只能修改自己发布的评论");
+        }
+
+        int updated = commentMapper.updateOwnComment(
+                commentId,
+                userId,
+                dto.content().trim()
+        );
+        if (updated != 1) {
+            // 读取后若评论被并发删除，不能误报修改成功。
+            throw new ResourceNotFoundException("评论不存在");
+        }
+
+        return toVO(requireView(commentId), userId);
     }
 
     @Override

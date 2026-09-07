@@ -2,6 +2,7 @@ package com.byy.blogprojectbackend.comment.controller;
 
 import com.byy.blogprojectbackend.auth.token.JwtTokenService;
 import com.byy.blogprojectbackend.comment.dto.CreateCommentDTO;
+import com.byy.blogprojectbackend.comment.dto.UpdateCommentDTO;
 import com.byy.blogprojectbackend.comment.service.CommentService;
 import com.byy.blogprojectbackend.comment.vo.CommentVO;
 import com.byy.blogprojectbackend.common.result.Result;
@@ -58,6 +59,20 @@ public class CommentController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(Result.success(comment));
+    }
+
+    /** 登录用户修改自己发布的顶层评论。 */
+    @PutMapping("/api/comments/{commentId}")
+    public Result<CommentVO> updateOwnComment(
+            @PathVariable @Positive Long commentId,
+            @Valid @RequestBody UpdateCommentDTO dto,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt
+    ) {
+        return Result.success(commentService.updateOwnComment(
+                commentId,
+                dto,
+                requiredUserId(jwt)
+        ));
     }
 
     @PostMapping("/api/owner/comments/{commentId}/reply")

@@ -109,6 +109,13 @@ public class SecurityConfig {
                         )
                         .authenticated()
 
+                        // 资源归属由 Comment Service 再按 JWT userId 校验。
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/comments/*"
+                        )
+                        .authenticated()
+
                         // 注册和登录接口。
                         .requestMatchers(
                                 HttpMethod.POST,

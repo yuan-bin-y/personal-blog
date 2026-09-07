@@ -1,12 +1,14 @@
 package com.byy.blogprojectbackend;
 
 import com.byy.blogprojectbackend.comment.dto.CreateCommentDTO;
+import com.byy.blogprojectbackend.comment.dto.UpdateCommentDTO;
 import com.byy.blogprojectbackend.comment.entity.Comment;
 import com.byy.blogprojectbackend.comment.mapper.CommentMapper;
 import com.byy.blogprojectbackend.comment.mapper.projection.CommentRow;
 import com.byy.blogprojectbackend.comment.service.impl.CommentServiceImpl;
 import com.byy.blogprojectbackend.comment.vo.CommentVO;
 import com.byy.blogprojectbackend.common.exception.ResourceNotFoundException;
+import com.byy.blogprojectbackend.common.exception.ForbiddenOperationException;
 import com.byy.blogprojectbackend.common.id.IdGenerator;
 import com.byy.blogprojectbackend.profile.entity.SpaceProfile;
 import com.byy.blogprojectbackend.profile.mapper.SpaceProfileMapper;
@@ -20,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -93,5 +96,74 @@ class CommentServiceImplTest {
         );
 
         verifyNoInteractions(profileMapper);
+    }
+
+    @Test
+    void updateOwnComment_whenCurrentUserIsAuthor_updatesContent() {
+        long commentId = 303L;
+        long postId = 101L;
+        long userId = 202L;
+
+        Comment existing = new Comment();
+        existing.setId(commentId);
+        existing.setPostId(postId);
+        existing.setAuthorUserId(userId);
+        existing.setParentId(null);
+        existing.setDeleted(false);
+
+        CommentRow updatedRow = new CommentRow();
+        updatedRow.setId(commentId);
+        updatedRow.setPostId(postId);
+        updatedRow.setAuthorUserId(userId);
+        updatedRow.setAuthorName("暖光访客");
+        updatedRow.setContent("修改后的评论");
+        updatedRow.setCreatedAt(LocalDateTime.of(2026, 9, 7, 12, 0));
+
+        when(commentMapper.selectAny(commentId)).thenReturn(existing);
+        when(commentMapper.updateOwnComment(
+                commentId,
+                userId,
+                "修改后的评论"
+        )).thenReturn(1);
+        when(commentMapper.selectTopLevelView(commentId)).thenReturn(updatedRow);
+
+        CommentVO result = commentService.updateOwnComment(
+                commentId,
+                new UpdateCommentDTO("  修改后的评论  "),
+                userId
+        );
+
+        assertEquals("修改后的评论", result.content());
+        assertTrue(result.ownedByMe());
+    }
+
+    @Test
+    void updateOwnComment_whenCurrentUserIsNotAuthor_throwsForbidden() {
+        long commentId = 303L;
+        long authorUserId = 202L;
+        long currentUserId = 999L;
+
+        Comment existing = new Comment();
+        existing.setId(commentId);
+        existing.setAuthorUserId(authorUserId);
+        existing.setParentId(null);
+        existing.setDeleted(false);
+
+        when(commentMapper.selectAny(commentId)).thenReturn(existing);
+
+        assertThrows(
+                ForbiddenOperationException.class,
+                () -> commentService.updateOwnComment(
+                        commentId,
+                        new UpdateCommentDTO("不能修改别人的评论"),
+                        currentUserId
+                )
+        );
+
+        verify(commentMapper, never()).updateOwnComment(
+                any(),
+                any(),
+                any()
+        );
     }
 }
