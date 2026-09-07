@@ -116,6 +116,13 @@ public class SecurityConfig {
                         )
                         .authenticated()
 
+                        // 登录用户只能删除自己的顶层评论，归属校验由 Service 完成。
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/comments/*"
+                        )
+                        .authenticated()
+
                         // 注册和登录接口。
                         .requestMatchers(
                                 HttpMethod.POST,

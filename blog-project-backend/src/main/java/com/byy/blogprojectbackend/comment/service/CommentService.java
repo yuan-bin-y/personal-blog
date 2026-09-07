@@ -13,4 +13,5 @@ public interface CommentService {
     CommentVO updateOwnComment(Long commentId, UpdateCommentDTO dto, Long userId);
     ReplyResult<CommentVO> reply(Long commentId,ReplyDTO dto,Long ownerId);
     void delete(Long commentId,Long ownerId);
+    void deleteOwnComment(Long commentId, Long userId);
 }

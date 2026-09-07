@@ -166,4 +166,75 @@ class CommentServiceImplTest {
                 any()
         );
     }
+
+    @Test
+    void deleteOwnComment_whenCurrentUserIsAuthor_softDeletesCommentAndReply() {
+        long commentId = 303L;
+        long postId = 101L;
+        long userId = 202L;
+
+        Comment existing = new Comment();
+        existing.setId(commentId);
+        existing.setPostId(postId);
+        existing.setAuthorUserId(userId);
+        existing.setParentId(null);
+        existing.setDeleted(false);
+
+        when(commentMapper.selectAny(commentId)).thenReturn(existing);
+        when(commentMapper.softDeleteOwnComment(commentId, userId)).thenReturn(1);
+
+        commentService.deleteOwnComment(commentId, userId);
+
+        verify(commentMapper).softDeleteReply(commentId, userId);
+        verify(commentMapper).decrementPostCommentCount(postId);
+    }
+
+    @Test
+    void deleteOwnComment_whenCurrentUserIsNotAuthor_throwsForbidden() {
+        long commentId = 303L;
+        long authorUserId = 202L;
+        long currentUserId = 999L;
+
+        Comment existing = new Comment();
+        existing.setId(commentId);
+        existing.setPostId(101L);
+        existing.setAuthorUserId(authorUserId);
+        existing.setParentId(null);
+        existing.setDeleted(false);
+
+        when(commentMapper.selectAny(commentId)).thenReturn(existing);
+
+        assertThrows(
+                ForbiddenOperationException.class,
+                () -> commentService.deleteOwnComment(commentId, currentUserId)
+        );
+
+        verify(commentMapper, never()).softDeleteOwnComment(any(), any());
+        verify(commentMapper, never()).decrementPostCommentCount(any());
+    }
+
+    @Test
+    void deleteOwnComment_whenConditionalUpdateMisses_throwsResourceNotFound() {
+        long commentId = 303L;
+        long postId = 101L;
+        long userId = 202L;
+
+        Comment existing = new Comment();
+        existing.setId(commentId);
+        existing.setPostId(postId);
+        existing.setAuthorUserId(userId);
+        existing.setParentId(null);
+        existing.setDeleted(false);
+
+        when(commentMapper.selectAny(commentId)).thenReturn(existing);
+        when(commentMapper.softDeleteOwnComment(commentId, userId)).thenReturn(0);
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> commentService.deleteOwnComment(commentId, userId)
+        );
+
+        verify(commentMapper, never()).softDeleteReply(any(), any());
+        verify(commentMapper, never()).decrementPostCommentCount(any());
+    }
 }

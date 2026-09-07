@@ -249,4 +249,51 @@ public class CommentServiceImpl implements CommentService {
                 reply
         );
     }
+
+    @Override
+    @Transactional
+    public void deleteOwnComment(
+            Long commentId,
+            Long userId
+    ) {
+        Comment comment = commentMapper.selectAny(commentId);
+
+        // 只能删除存在、未删除的顶层评论
+        if (comment == null
+                || Boolean.TRUE.equals(comment.getDeleted())
+                || comment.getParentId() != null) {
+            throw new ResourceNotFoundException("评论不存在");
+        }
+
+        // 评论存在，但作者不是当前登录用户
+        if (!userId.equals(comment.getAuthorUserId())) {
+            throw new ForbiddenOperationException(
+                    "只能删除自己发布的评论"
+            );
+        }
+
+        /*
+         * SQL 再次携带 author_user_id 条件，
+         * 防止检查后评论状态发生并发变化。
+         */
+        int deleted = commentMapper.softDeleteOwnComment(
+                commentId,
+                userId
+        );
+
+        if (deleted != 1) {
+            throw new ResourceNotFoundException("评论不存在");
+        }
+
+        // 删除顶层评论时，它下面的 Owner 回复也不能继续显示
+        commentMapper.softDeleteReply(
+                commentId,
+                userId
+        );
+
+        // 维护 Post 的冗余评论数量
+        commentMapper.decrementPostCommentCount(
+                comment.getPostId()
+        );
+    }
 }

@@ -108,4 +108,16 @@ public class CommentController {
     private Long currentUserIdOrNull(Jwt jwt) {
         return jwt == null ? null : requiredUserId(jwt);
     }
+    /** 登录用户删除自己发布的顶层评论。 */
+    @DeleteMapping("/api/comments/{commentId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteOwnComment(
+            @PathVariable @Positive Long commentId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt
+    ) {
+        commentService.deleteOwnComment(
+                commentId,
+                requiredUserId(jwt)
+        );
+    }
 }

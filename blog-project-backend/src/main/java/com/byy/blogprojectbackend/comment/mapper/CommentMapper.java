@@ -22,4 +22,5 @@ public interface CommentMapper {
     int softDeleteOne(@Param("id") Long id,@Param("ownerId") Long ownerId);
     int softDeleteReply(@Param("parentId") Long parentId,@Param("ownerId") Long ownerId);
     int decrementPostCommentCount(@Param("postId") Long postId);
+    int softDeleteOwnComment(@Param("id") Long id, @Param("userId") Long userId);
 }
