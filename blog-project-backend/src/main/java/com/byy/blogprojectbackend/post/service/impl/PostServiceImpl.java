@@ -381,6 +381,7 @@ public class PostServiceImpl implements PostService {
                 "PUBLISHED",
 
                 row.getLikeCount(),
+                false,
                 row.getCommentCount(),
 
                 // Visitor 不需要获得乐观锁版本。

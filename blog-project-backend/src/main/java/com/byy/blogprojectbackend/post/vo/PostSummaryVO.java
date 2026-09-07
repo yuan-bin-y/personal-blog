@@ -24,6 +24,7 @@ public record PostSummaryVO(
         Integer readingTime,
         String status,
         Integer likeCount,
+        boolean likedByMe,
         Integer commentCount,
         Integer version
 ) {

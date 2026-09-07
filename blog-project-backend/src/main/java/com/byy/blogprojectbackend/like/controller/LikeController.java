@@ -2,15 +2,22 @@ package com.byy.blogprojectbackend.like.controller;
 
 import com.byy.blogprojectbackend.auth.token.JwtTokenService;
 import com.byy.blogprojectbackend.common.result.Result;
+import com.byy.blogprojectbackend.common.vo.PageVO;
 import com.byy.blogprojectbackend.like.service.LikeService;
 import com.byy.blogprojectbackend.like.vo.LikeStateVO;
+import com.byy.blogprojectbackend.post.vo.PostSummaryVO;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Validated
@@ -31,6 +38,29 @@ public class LikeController {
                         postId,
                         requiredUserId(jwt)
                 )
+        );
+    }
+
+    /** 登录用户幂等取消对公开 Post 的点赞。 */
+    @DeleteMapping("/api/posts/{postId}/like")
+    public Result<LikeStateVO> unlike(
+            @PathVariable @Positive Long postId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return Result.success(
+                likeService.unlike(postId, requiredUserId(jwt))
+        );
+    }
+
+    /** 按点赞时间倒序查询当前用户点赞过的公开 Post。 */
+    @GetMapping("/api/me/likes")
+    public Result<PageVO<PostSummaryVO>> listMyLikes(
+            @RequestParam(defaultValue = "1") @Min(1) int page,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(50) int pageSize,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return Result.success(
+                likeService.listMyLikes(requiredUserId(jwt), page, pageSize)
         );
     }
 

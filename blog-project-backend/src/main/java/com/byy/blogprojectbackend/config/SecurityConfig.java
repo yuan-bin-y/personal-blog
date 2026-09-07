@@ -146,6 +146,15 @@ public class SecurityConfig {
                         )
                         .authenticated()
 
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/posts/*/like"
+                        )
+                        .authenticated()
+
+                        .requestMatchers(HttpMethod.GET, "/api/me/likes")
+                        .authenticated()
+
                         // 注册和登录接口。
                         .requestMatchers(
                                 HttpMethod.POST,

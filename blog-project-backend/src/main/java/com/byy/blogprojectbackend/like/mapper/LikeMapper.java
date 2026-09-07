@@ -1,8 +1,11 @@
 package com.byy.blogprojectbackend.like.mapper;
 
 import com.byy.blogprojectbackend.like.entity.PostLike;
+import com.byy.blogprojectbackend.post.mapper.projection.PostFeedRow;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
 
 @Mapper
 public interface LikeMapper {
@@ -28,5 +31,26 @@ public interface LikeMapper {
      */
     int incrementPublicLikeCount(
             @Param("postId") Long postId
+    );
+
+    /** 删除当前用户与 Post 的点赞关系；不存在时返回 0。 */
+    int deleteRelation(
+            @Param("postId") Long postId,
+            @Param("userId") Long userId
+    );
+
+    /** 只有 Post 仍然公开时才减少点赞数。 */
+    int decrementPublicLikeCount(
+            @Param("postId") Long postId
+    );
+
+    long countMyPublicLikes(
+            @Param("userId") Long userId
+    );
+
+    List<PostFeedRow> selectMyPublicLikes(
+            @Param("userId") Long userId,
+            @Param("offset") long offset,
+            @Param("pageSize") int pageSize
     );
 }

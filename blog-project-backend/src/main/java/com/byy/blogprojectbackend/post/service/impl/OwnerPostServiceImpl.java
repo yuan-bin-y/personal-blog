@@ -149,7 +149,7 @@ public class OwnerPostServiceImpl implements OwnerPostService {
         CategoryVO category=tech?new CategoryVO(String.valueOf(r.getCategoryId()),r.getCategoryName(),r.getCategorySlug(),r.getCategoryDescription(),!Boolean.TRUE.equals(r.getCategoryDeleted())):null;
         MediaVO cover=tech?media.stream().filter(m->COVER.equals(m.usageType())).findFirst().orElse(null):null;
         List<MediaVO>images=tech?List.of():media.stream().filter(m->CONTENT.equals(m.usageType())).toList();
-        return new PostSummaryVO(String.valueOf(r.getId()),r.getType(),tech?r.getSlug():null,tech?r.getTitle():null,tech?r.getSummary():null,tech?null:r.getContent(),author,category,tech?tags:List.of(),cover,images,toInstant(r.getCreatedAt()),toInstant(r.getUpdatedAt()),toInstant(r.getPublishedAt()),tech?r.getReadingTime():null,r.getStatus(),r.getLikeCount(),r.getCommentCount(),r.getVersion());
+        return new PostSummaryVO(String.valueOf(r.getId()),r.getType(),tech?r.getSlug():null,tech?r.getTitle():null,tech?r.getSummary():null,tech?null:r.getContent(),author,category,tech?tags:List.of(),cover,images,toInstant(r.getCreatedAt()),toInstant(r.getUpdatedAt()),toInstant(r.getPublishedAt()),tech?r.getReadingTime():null,r.getStatus(),r.getLikeCount(),false,r.getCommentCount(),r.getVersion());
     }
 
     private TechDetailVO techDetail(PostSummaryVO s,String content,String format){return new TechDetailVO(s.id(),s.type(),s.slug(),s.title(),s.summary(),content,s.author(),s.category(),s.tags(),s.cover(),s.images(),s.createdAt(),s.updatedAt(),s.publishedAt(),s.readingTime(),s.status(),s.likeCount(),s.commentCount(),s.version(),format,List.of());}

@@ -40,4 +40,69 @@
         AND published_at &lt;= UTC_TIMESTAMP(3)
     </update>
 
+    <delete id="deleteRelation">
+        DELETE FROM post_like
+        WHERE post_id = #{postId}
+        AND user_id = #{userId}
+    </delete>
+
+    <update id="decrementPublicLikeCount">
+        UPDATE post
+        SET like_count = GREATEST(like_count - 1, 0)
+        WHERE id = #{postId}
+        AND deleted = 0
+        AND status = 'PUBLISHED'
+        AND published_at IS NOT NULL
+        AND published_at &lt;= UTC_TIMESTAMP(3)
+    </update>
+
+    <select id="countMyPublicLikes" resultType="long">
+        SELECT COUNT(*)
+        FROM post_like pl
+        INNER JOIN post p ON p.id = pl.post_id
+        WHERE pl.user_id = #{userId}
+        AND p.deleted = 0
+        AND p.status = 'PUBLISHED'
+        AND p.published_at IS NOT NULL
+        AND p.published_at &lt;= UTC_TIMESTAMP(3)
+    </select>
+
+    <select id="selectMyPublicLikes"
+            resultType="com.byy.blogprojectbackend.post.mapper.projection.PostFeedRow">
+        SELECT
+        p.id,
+        p.type,
+        p.slug,
+        p.title,
+        p.summary,
+        p.content,
+        p.content_format AS contentFormat,
+        p.created_by AS authorUserId,
+        pf.display_name AS authorName,
+        pf.avatar_url AS authorAvatar,
+        c.id AS categoryId,
+        c.name AS categoryName,
+        c.slug AS categorySlug,
+        c.description AS categoryDescription,
+        c.deleted AS categoryDeleted,
+        p.created_at AS createdAt,
+        p.updated_at AS updatedAt,
+        p.published_at AS publishedAt,
+        p.reading_time_minutes AS readingTime,
+        p.status,
+        p.like_count AS likeCount,
+        p.comment_count AS commentCount
+        FROM post_like pl
+        INNER JOIN post p ON p.id = pl.post_id
+        INNER JOIN profile pf ON pf.user_id = p.created_by
+        LEFT JOIN category c ON c.id = p.category_id
+        WHERE pl.user_id = #{userId}
+        AND p.deleted = 0
+        AND p.status = 'PUBLISHED'
+        AND p.published_at IS NOT NULL
+        AND p.published_at &lt;= UTC_TIMESTAMP(3)
+        ORDER BY pl.created_at DESC, pl.id DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
 </mapper>
