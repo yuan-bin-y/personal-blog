@@ -22,6 +22,11 @@ spring:
       password: ${REDIS_PASSWORD:}
       timeout: 2s
 
+  servlet:
+    multipart:
+      max-file-size: ${MEDIA_MAX_FILE_SIZE:200MB}
+      max-request-size: ${MEDIA_MAX_REQUEST_SIZE:205MB}
+
 app:
   security:
     jwt:
@@ -29,6 +34,21 @@ app:
       access-token-ttl: 2h
       # 不提供默认 Secret，防止部署时误用公开的开发密钥。
       secret-base64: ${JWT_SECRET_BASE64}
+  media:
+    # 本地开发默认写入 media-uploads；生产设置为 aliyun-oss。
+    storage-provider: ${MEDIA_STORAGE_PROVIDER:local}
+    local-root: ${MEDIA_LOCAL_ROOT:media-uploads}
+    public-base-url: ${MEDIA_PUBLIC_BASE_URL:http://localhost:8080/media}
+    max-image-bytes: ${MEDIA_MAX_IMAGE_BYTES:10485760}
+    max-video-bytes: ${MEDIA_MAX_VIDEO_BYTES:209715200}
+    max-audio-bytes: ${MEDIA_MAX_AUDIO_BYTES:31457280}
+    retry-enabled: ${MEDIA_RETRY_ENABLED:true}
+    retry-delay-ms: ${MEDIA_RETRY_DELAY_MS:60000}
+    oss:
+      endpoint: ${OSS_ENDPOINT:}
+      access-key-id: ${OSS_ACCESS_KEY_ID:}
+      access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+      bucket-name: ${OSS_BUCKET_NAME:}
 
 server:
   port: 8080

@@ -36,3 +36,6 @@ build/
 src/main/resources/application-local.yaml
 config/application-local.yaml
 config/application-*.local.yaml
+
+# Local media storage used by the development provider
+media-uploads/

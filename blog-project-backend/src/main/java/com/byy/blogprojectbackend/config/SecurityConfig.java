@@ -88,6 +88,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/owner/guestbook/*")
                         .hasAuthority(AuthorityConstants.Permission.GUESTBOOK_DELETE.getCode())
 
+                        .requestMatchers("/api/owner/media", "/api/owner/media/**")
+                        .hasAuthority(AuthorityConstants.Permission.MEDIA_MANAGE.getCode())
+
                         .requestMatchers("/api/owner/**")
                         .hasRole("OWNER")
 
@@ -201,6 +204,10 @@ public class SecurityConfig {
                                 "/api/guestbook",
                                 "/api/posts/*/comments"
                         )
+                        .permitAll()
+
+                        // 本地开发存储的公开媒体资源。
+                        .requestMatchers(HttpMethod.GET, "/media/**")
                         .permitAll()
 
 

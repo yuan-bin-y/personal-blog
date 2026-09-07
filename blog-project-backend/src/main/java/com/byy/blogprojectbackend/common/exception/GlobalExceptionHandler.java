@@ -14,9 +14,14 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import com.byy.blogprojectbackend.media.exception.MediaPayloadTooLargeException;
+import com.byy.blogprojectbackend.media.exception.UnsupportedMediaTypeException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -144,6 +149,23 @@ public class GlobalExceptionHandler {
                 .body(Result.validation(fieldErrors));
     }
 
+    /** 处理 multipart 文件或普通请求参数缺失。 */
+    @ExceptionHandler({
+            MissingServletRequestPartException.class,
+            MissingServletRequestParameterException.class
+    })
+    public ResponseEntity<Result<Void>> handleMissingRequestValue(Exception exception) {
+        String name = exception instanceof MissingServletRequestPartException partException
+                ? partException.getRequestPartName()
+                : ((MissingServletRequestParameterException) exception).getParameterName();
+        return ResponseEntity
+                .badRequest()
+                .body(Result.failure(
+                        ApiErrorCode.BAD_REQUEST,
+                        "缺少请求参数：" + name
+                ));
+    }
+
     /** 处理请求的业务资源不存在。 */
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Result<Void>> handleResourceNotFound(
@@ -192,6 +214,28 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .badRequest()
                 .body(Result.failure(ApiErrorCode.BAD_REQUEST, exception.getMessage()));
+    }
+
+    @ExceptionHandler({MediaPayloadTooLargeException.class, MaxUploadSizeExceededException.class})
+    public ResponseEntity<Result<Void>> handlePayloadTooLarge(RuntimeException exception) {
+        return ResponseEntity
+                .status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(Result.failure(
+                        ApiErrorCode.PAYLOAD_TOO_LARGE,
+                        "上传文件超过允许大小"
+                ));
+    }
+
+    @ExceptionHandler(UnsupportedMediaTypeException.class)
+    public ResponseEntity<Result<Void>> handleUnsupportedMediaType(
+            UnsupportedMediaTypeException exception
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                .body(Result.failure(
+                        ApiErrorCode.UNSUPPORTED_MEDIA_TYPE,
+                        exception.getMessage()
+                ));
     }
 
     /** 未知异常只向客户端返回通用信息，详细堆栈写入服务端日志。 */

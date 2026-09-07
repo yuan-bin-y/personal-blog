@@ -42,7 +42,9 @@ public final class AuthorityConstants {
         COMMENT_DELETE("COMMENT_DELETE", "删除评论"),
 
         GUESTBOOK_REPLY("GUESTBOOK_REPLY", "回复留言"),
-        GUESTBOOK_DELETE("GUESTBOOK_DELETE", "删除留言");
+        GUESTBOOK_DELETE("GUESTBOOK_DELETE", "删除留言"),
+
+        MEDIA_MANAGE("MEDIA_MANAGE", "媒体管理");
 
         /** Spring Security 使用的权限编码。 */
         private final String code;
@@ -80,6 +82,8 @@ public final class AuthorityConstants {
             Permission.COMMENT_DELETE.getCode(),
 
             Permission.GUESTBOOK_REPLY.getCode(),
-            Permission.GUESTBOOK_DELETE.getCode()
+            Permission.GUESTBOOK_DELETE.getCode(),
+
+            Permission.MEDIA_MANAGE.getCode()
     );
 }

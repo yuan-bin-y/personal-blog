@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.byy.blogprojectbackend.media.mapper.MediaAssetMapper">
+
+    <sql id="columns">
+        id,media_type AS mediaType,usage_type AS usageType,
+        storage_provider AS storageProvider,bucket_name AS bucketName,
+        object_key AS objectKey,url,original_name AS originalName,
+        content_type AS contentType,size_bytes AS sizeBytes,width,height,
+        duration_seconds AS durationSeconds,status,retry_count AS retryCount,
+        last_error AS lastError,next_retry_at AS nextRetryAt,
+        created_by AS createdBy,created_at AS createdAt,updated_at AS updatedAt,
+        deleted,deleted_at AS deletedAt,deleted_by AS deletedBy
+    </sql>
+
+    <insert id="insert">
+        INSERT INTO media_asset(
+            id,media_type,usage_type,storage_provider,bucket_name,object_key,
+            url,original_name,content_type,size_bytes,width,height,duration_seconds,
+            status,retry_count,created_by,deleted
+        ) VALUES(
+            #{asset.id},#{asset.mediaType},#{asset.usageType},#{asset.storageProvider},
+            #{asset.bucketName},#{asset.objectKey},#{asset.url},#{asset.originalName},
+            #{asset.contentType},#{asset.sizeBytes},#{asset.width},#{asset.height},
+            #{asset.durationSeconds},#{asset.status},0,#{asset.createdBy},0
+        )
+    </insert>
+
+    <select id="selectById" resultType="com.byy.blogprojectbackend.media.entity.MediaAsset">
+        SELECT <include refid="columns"/>
+        FROM media_asset WHERE id=#{id} LIMIT 1
+    </select>
+
+    <select id="selectForUpdate" resultType="com.byy.blogprojectbackend.media.entity.MediaAsset">
+        SELECT <include refid="columns"/>
+        FROM media_asset WHERE id=#{id} LIMIT 1 FOR UPDATE
+    </select>
+
+    <update id="markActive">
+        UPDATE media_asset
+        SET status='ACTIVE',url=#{url},last_error=NULL,next_retry_at=NULL
+        WHERE id=#{id} AND status='UPLOADING' AND deleted=0
+    </update>
+
+    <update id="markUploadFailed">
+        UPDATE media_asset
+        SET status='UPLOAD_FAILED',last_error=#{error},retry_count=retry_count+1,
+            next_retry_at=DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 5 MINUTE)
+        WHERE id=#{id} AND status='UPLOADING' AND deleted=0
+    </update>
+
+    <select id="countActive" resultType="long">
+        SELECT COUNT(*) FROM media_asset
+        WHERE deleted=0 AND status='ACTIVE'
+        <if test="mediaType != null">AND media_type=#{mediaType}</if>
+        <if test="usageType != null">AND usage_type=#{usageType}</if>
+    </select>
+
+    <select id="selectActivePage" resultType="com.byy.blogprojectbackend.media.entity.MediaAsset">
+        SELECT <include refid="columns"/> FROM media_asset
+        WHERE deleted=0 AND status='ACTIVE'
+        <if test="mediaType != null">AND media_type=#{mediaType}</if>
+        <if test="usageType != null">AND usage_type=#{usageType}</if>
+        ORDER BY created_at DESC,id DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countReferences" resultType="int">
+        SELECT
+          (SELECT COUNT(*) FROM profile WHERE avatar_url=#{url})
+        + (SELECT COUNT(*) FROM post_media WHERE deleted=0 AND (url=#{url} OR poster_url=#{url}))
+        + (SELECT COUNT(*) FROM site_config
+           WHERE hero_desktop_video_url=#{url}
+              OR hero_mobile_video_url=#{url}
+              OR hero_poster_url=#{url}
+              OR music_audio_url=#{url}
+              OR music_cover_url=#{url}
+              OR JSON_SEARCH(page_media_json,'one',#{url}) IS NOT NULL)
+    </select>
+
+    <update id="markDeleting">
+        UPDATE media_asset
+        SET status='DELETING',deleted_by=#{ownerId},last_error=NULL,next_retry_at=NULL
+        WHERE id=#{id} AND status IN ('ACTIVE','DELETE_FAILED') AND deleted=0
+    </update>
+
+    <update id="markDeleted">
+        UPDATE media_asset
+        SET status='DELETED',deleted=1,deleted_at=UTC_TIMESTAMP(3),deleted_by=#{ownerId},
+            last_error=NULL,next_retry_at=NULL
+        WHERE id=#{id} AND status='DELETING' AND deleted=0
+    </update>
+
+    <update id="markDeleteFailed">
+        UPDATE media_asset
+        SET status='DELETE_FAILED',last_error=#{error},retry_count=retry_count+1,
+            next_retry_at=DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 5 MINUTE)
+        WHERE id=#{id} AND status='DELETING' AND deleted=0
+    </update>
+
+    <update id="markFailedUploadDeleting">
+        UPDATE media_asset
+        SET status='DELETING',deleted_by=#{ownerId},last_error=NULL,next_retry_at=NULL
+        WHERE id=#{id} AND status='UPLOAD_FAILED' AND deleted=0
+    </update>
+
+    <select id="selectRetryableFailures" resultType="com.byy.blogprojectbackend.media.entity.MediaAsset">
+        SELECT <include refid="columns"/> FROM media_asset
+        WHERE deleted=0
+        AND status IN ('UPLOAD_FAILED','DELETE_FAILED')
+        AND retry_count &lt; 5
+        AND (next_retry_at IS NULL OR next_retry_at &lt;= UTC_TIMESTAMP(3))
+        ORDER BY COALESCE(next_retry_at,created_at),id
+        LIMIT #{limit}
+    </select>
+
+</mapper>

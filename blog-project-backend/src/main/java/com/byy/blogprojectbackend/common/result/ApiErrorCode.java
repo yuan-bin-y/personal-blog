@@ -15,6 +15,8 @@ public enum ApiErrorCode {
     RESOURCE_NOT_FOUND("资源不存在"),
     VERSION_CONFLICT("数据版本冲突"),
     RESOURCE_CONFLICT("资源冲突"),
+    PAYLOAD_TOO_LARGE("上传文件过大"),
+    UNSUPPORTED_MEDIA_TYPE("不支持的媒体类型"),
     INTERNAL_ERROR("服务器内部错误");
 
     /**

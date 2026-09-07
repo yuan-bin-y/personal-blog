@@ -7,6 +7,8 @@ MySQL 8.x database scripts generated from the frozen `docs/DATABASE_DESIGN.md` a
 - `01_schema.sql`：创建 `binspace` 数据库、表、外键、检查约束、唯一约束和索引。
 - `02_seed.sql`：写入当前前端已经存在的站点配置。
 - `03_visitor_accounts.sql`：允许 `space_user.role=VISITOR`，用于 Visitor 注册。
+- `04_post_like.sql`：新增登录用户的 Post 点赞关系表。
+- `05_media_asset.sql`：新增 Owner 媒体资产表及上传/删除恢复状态。
 
 ## Execution
 
@@ -16,9 +18,11 @@ MySQL 8.x database scripts generated from the frozen `docs/DATABASE_DESIGN.md` a
 mysql -u root -p < 01_schema.sql
 mysql -u root -p < 02_seed.sql
 mysql -u root -p < 03_visitor_accounts.sql
+mysql -u root -p < 04_post_like.sql
+mysql -u root -p < 05_media_asset.sql
 ```
 
-也可以在 MySQL 客户端中依次 `SOURCE` 三个文件。
+也可以在 MySQL 客户端中按编号依次 `SOURCE` 五个文件。
 
 要求：
 
@@ -69,10 +73,10 @@ mysql -u root -p < 03_visitor_accounts.sql
 - TECH 正文图片 URL 直接保存在 Markdown `post.content` 中。
 - TECH Cover 写入 `post_media`，`usage_type=COVER`。
 - MOMENT 图片写入 `post_media`，`usage_type=CONTENT`。
-- V1 不包含媒体库或 OSS 文件资产表。
+- `media_asset` 保存 Owner 上传媒体的存储定位、文件元数据和一致性恢复状态；业务表继续只保存最终 URL。
 
 ## Re-running
 
-- `01_schema.sql` / `02_seed.sql` 使用 `IF NOT EXISTS` / `INSERT IGNORE`；`03_visitor_accounts.sql` 是已有数据库的一次性增量迁移，不要重复执行。
+- `01_schema.sql` / `02_seed.sql` 使用 `IF NOT EXISTS` / `INSERT IGNORE`；`03`～`05` 是已有数据库的增量迁移，应按编号记录执行情况。
 - 这些文件不是迁移框架。已有表发生结构变更后，应新增版本化迁移脚本，不要依赖重新运行 `01_schema.sql` 修改旧表。
 - 正式执行前仍建议备份目标数据库。
