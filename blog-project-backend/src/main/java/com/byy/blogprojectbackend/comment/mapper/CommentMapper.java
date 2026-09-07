@@ -12,6 +12,8 @@ public interface CommentMapper {
     long countTopLevel(@Param("postId") Long postId);
     List<CommentRow> selectPage(@Param("postId") Long postId,@Param("offset") long offset,@Param("pageSize") int pageSize);
     CommentRow selectTopLevelView(@Param("id") Long id);
+    int insertTopLevel(@Param("comment") Comment comment);
+    int incrementPostCommentCount(@Param("postId") Long postId);
     Comment selectAny(@Param("id") Long id);
     Comment selectReplyAny(@Param("parentId") Long parentId);
     void insertReply(@Param("reply") Comment reply);

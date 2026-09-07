@@ -1,0 +1,97 @@
+package com.byy.blogprojectbackend;
+
+import com.byy.blogprojectbackend.comment.dto.CreateCommentDTO;
+import com.byy.blogprojectbackend.comment.entity.Comment;
+import com.byy.blogprojectbackend.comment.mapper.CommentMapper;
+import com.byy.blogprojectbackend.comment.mapper.projection.CommentRow;
+import com.byy.blogprojectbackend.comment.service.impl.CommentServiceImpl;
+import com.byy.blogprojectbackend.comment.vo.CommentVO;
+import com.byy.blogprojectbackend.common.exception.ResourceNotFoundException;
+import com.byy.blogprojectbackend.common.id.IdGenerator;
+import com.byy.blogprojectbackend.profile.entity.SpaceProfile;
+import com.byy.blogprojectbackend.profile.mapper.SpaceProfileMapper;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+
+import java.time.LocalDateTime;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+class CommentServiceImplTest {
+
+    private final CommentMapper commentMapper = mock(CommentMapper.class);
+    private final SpaceProfileMapper profileMapper = mock(SpaceProfileMapper.class);
+    private final IdGenerator idGenerator = mock(IdGenerator.class);
+    private final CommentServiceImpl commentService = new CommentServiceImpl(
+            commentMapper,
+            profileMapper,
+            idGenerator
+    );
+
+    @Test
+    void create_buildsAuthorFromProfileAndReturnsOwnedComment() {
+        long postId = 101L;
+        long userId = 202L;
+        long commentId = 303L;
+
+        SpaceProfile profile = new SpaceProfile();
+        profile.setUserId(userId);
+        profile.setDisplayName("暖光访客");
+        profile.setAvatarUrl("/media/visitor.png");
+
+        CommentRow row = new CommentRow();
+        row.setId(commentId);
+        row.setPostId(postId);
+        row.setAuthorUserId(userId);
+        row.setAuthorName(profile.getDisplayName());
+        row.setAuthorAvatar(profile.getAvatarUrl());
+        row.setContent("这篇文章很有帮助。");
+        row.setCreatedAt(LocalDateTime.of(2026, 9, 7, 12, 0));
+
+        when(commentMapper.countPublicPost(postId)).thenReturn(1);
+        when(profileMapper.selectByUserId(userId)).thenReturn(profile);
+        when(idGenerator.nextId()).thenReturn(commentId);
+        when(commentMapper.insertTopLevel(any(Comment.class))).thenReturn(1);
+        when(commentMapper.incrementPostCommentCount(postId)).thenReturn(1);
+        when(commentMapper.selectTopLevelView(commentId)).thenReturn(row);
+
+        CommentVO result = commentService.create(
+                postId,
+                new CreateCommentDTO("  这篇文章很有帮助。  "),
+                userId
+        );
+
+        ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
+        verify(commentMapper).insertTopLevel(captor.capture());
+        Comment inserted = captor.getValue();
+
+        assertEquals(userId, inserted.getAuthorUserId());
+        assertEquals("暖光访客", inserted.getAuthorName());
+        assertEquals("这篇文章很有帮助。", inserted.getContent());
+        assertEquals(String.valueOf(commentId), result.id());
+        assertTrue(result.ownedByMe());
+    }
+
+    @Test
+    void create_whenPostIsNotPublic_throwsResourceNotFound() {
+        when(commentMapper.countPublicPost(101L)).thenReturn(0);
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> commentService.create(
+                        101L,
+                        new CreateCommentDTO("评论内容"),
+                        202L
+                )
+        );
+
+        verifyNoInteractions(profileMapper);
+    }
+}

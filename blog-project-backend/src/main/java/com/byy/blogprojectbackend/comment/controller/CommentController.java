@@ -1,6 +1,7 @@
 package com.byy.blogprojectbackend.comment.controller;
 
 import com.byy.blogprojectbackend.auth.token.JwtTokenService;
+import com.byy.blogprojectbackend.comment.dto.CreateCommentDTO;
 import com.byy.blogprojectbackend.comment.service.CommentService;
 import com.byy.blogprojectbackend.comment.vo.CommentVO;
 import com.byy.blogprojectbackend.common.result.Result;
@@ -30,9 +31,33 @@ public class CommentController {
     public Result<PageVO<CommentVO>> list(
             @PathVariable @Positive Long postId,
             @RequestParam(defaultValue = "1") @Min(1) int page,
-            @RequestParam(defaultValue = "10") @Min(1) @Max(50) int pageSize
+            @RequestParam(defaultValue = "10") @Min(1) @Max(50) int pageSize,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt
     ) {
-        return Result.success(commentService.list(postId, page, pageSize));
+        return Result.success(commentService.list(
+                postId,
+                page,
+                pageSize,
+                currentUserIdOrNull(jwt)
+        ));
+    }
+
+    /** 登录后的 Visitor 或 Owner 对公开 Post 发表评论。 */
+    @PostMapping("/api/posts/{postId}/comments")
+    public ResponseEntity<Result<CommentVO>> create(
+            @PathVariable @Positive Long postId,
+            @Valid @RequestBody CreateCommentDTO dto,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt
+    ) {
+        CommentVO comment = commentService.create(
+                postId,
+                dto,
+                requiredUserId(jwt)
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(Result.success(comment));
     }
 
     @PostMapping("/api/owner/comments/{commentId}/reply")
@@ -44,7 +69,7 @@ public class CommentController {
         ReplyResult<CommentVO> result = commentService.reply(
                 commentId,
                 dto,
-                ownerId(jwt)
+                requiredUserId(jwt)
         );
 
         return ResponseEntity
@@ -58,10 +83,14 @@ public class CommentController {
             @PathVariable @Positive Long commentId,
             @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt
     ) {
-        commentService.delete(commentId, ownerId(jwt));
+        commentService.delete(commentId, requiredUserId(jwt));
     }
 
-    private Long ownerId(Jwt jwt) {
+    private Long requiredUserId(Jwt jwt) {
         return Long.valueOf(jwt.getClaimAsString(JwtTokenService.CLAIM_USER_ID));
+    }
+
+    private Long currentUserIdOrNull(Jwt jwt) {
+        return jwt == null ? null : requiredUserId(jwt);
     }
 }

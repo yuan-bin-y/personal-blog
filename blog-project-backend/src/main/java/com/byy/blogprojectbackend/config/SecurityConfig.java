@@ -102,6 +102,13 @@ public class SecurityConfig {
                         // Visitor / Public 接口
                         // =========================
 
+                        // Visitor 与 Owner 登录后都可以对公开 Post 发表评论。
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/posts/*/comments"
+                        )
+                        .authenticated()
+
                         // 注册和登录接口。
                         .requestMatchers(
                                 HttpMethod.POST,
