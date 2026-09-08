@@ -12,6 +12,7 @@ import com.byy.blogprojectbackend.guestbook.service.impl.GuestbookServiceImpl;
 import com.byy.blogprojectbackend.guestbook.vo.GuestbookVO;
 import com.byy.blogprojectbackend.profile.entity.SpaceProfile;
 import com.byy.blogprojectbackend.profile.mapper.SpaceProfileMapper;
+import com.byy.blogprojectbackend.notification.service.NotificationService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -31,10 +32,12 @@ class GuestbookServiceImplTest {
     private final GuestbookMapper guestbookMapper = mock(GuestbookMapper.class);
     private final SpaceProfileMapper profileMapper = mock(SpaceProfileMapper.class);
     private final IdGenerator idGenerator = mock(IdGenerator.class);
+    private final NotificationService notificationService = mock(NotificationService.class);
     private final GuestbookServiceImpl guestbookService = new GuestbookServiceImpl(
             guestbookMapper,
             profileMapper,
-            idGenerator
+            idGenerator,
+            notificationService
     );
 
     @Test
@@ -59,6 +62,11 @@ class GuestbookServiceImplTest {
         assertEquals(userId, captor.getValue().getAuthorUserId());
         assertEquals("来都来了，留下一个脚印。", captor.getValue().getContent());
         assertTrue(result.ownedByMe());
+        verify(notificationService).notifyGuestbookCreated(
+                userId,
+                "暖光访客",
+                entryId
+        );
     }
 
     @Test

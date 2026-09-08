@@ -158,6 +158,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/me/likes")
                         .authenticated()
 
+                        // 通知中心与 SSE 只对已登录 Visitor/Owner 开放。
+                        .requestMatchers(
+                                "/api/realtime/events",
+                                "/api/notifications",
+                                "/api/notifications/**"
+                        )
+                        .authenticated()
+
                         // 注册和登录接口。
                         .requestMatchers(
                                 HttpMethod.POST,

@@ -49,6 +49,10 @@ app:
       access-key-id: ${OSS_ACCESS_KEY_ID:}
       access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
       bucket-name: ${OSS_BUCKET_NAME:}
+  realtime:
+    sse-timeout-ms: ${SSE_TIMEOUT_MS:1800000}
+    heartbeat-ms: ${SSE_HEARTBEAT_MS:25000}
+    replay-limit: ${SSE_REPLAY_LIMIT:100}
 
 server:
   port: 8080

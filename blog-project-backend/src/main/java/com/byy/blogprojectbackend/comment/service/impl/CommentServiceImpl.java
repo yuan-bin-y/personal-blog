@@ -17,6 +17,7 @@ import com.byy.blogprojectbackend.interaction.service.ReplyResult;
 import com.byy.blogprojectbackend.interaction.vo.ReplyAuthorVO;
 import com.byy.blogprojectbackend.interaction.vo.ReplyVO;
 import com.byy.blogprojectbackend.interaction.vo.VisitorAuthorVO;
+import com.byy.blogprojectbackend.notification.service.NotificationService;
 import com.byy.blogprojectbackend.profile.entity.SpaceProfile;
 import com.byy.blogprojectbackend.profile.mapper.SpaceProfileMapper;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class CommentServiceImpl implements CommentService {
     private final CommentMapper commentMapper;
     private final SpaceProfileMapper profileMapper;
     private final IdGenerator idGenerator;
+    private final NotificationService notificationService;
 
     @Override
     public PageVO<CommentVO> list(
@@ -101,6 +103,12 @@ public class CommentServiceImpl implements CommentService {
         if (commentMapper.incrementPostCommentCount(postId) != 1) {
             throw new ResourceNotFoundException("公开内容不存在");
         }
+
+        notificationService.notifyCommentCreated(
+                userId,
+                profile.getDisplayName(),
+                postId
+        );
 
         return toVO(requireView(comment.getId()), userId);
     }
@@ -181,6 +189,13 @@ public class CommentServiceImpl implements CommentService {
         } else {
             throw new ResourceConflictException("该评论已经有 Owner 回复");
         }
+
+        notificationService.notifyCommentReplied(
+                ownerId,
+                profile.getDisplayName(),
+                parent.getAuthorUserId(),
+                commentId
+        );
 
         return new ReplyResult<>(
                 toVO(requireView(commentId), ownerId),

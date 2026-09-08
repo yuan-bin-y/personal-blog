@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.byy.blogprojectbackend.notification.mapper.NotificationMapper">
+
+    <sql id="viewColumns">
+        n.id,
+        n.recipient_user_id AS recipientUserId,
+        n.actor_user_id AS actorUserId,
+        COALESCE(p.display_name, u.username) AS actorName,
+        p.avatar_url AS actorAvatar,
+        n.type,
+        n.resource_type AS resourceType,
+        n.resource_id AS resourceId,
+        n.summary,
+        n.is_read AS `read`,
+        n.created_at AS createdAt
+    </sql>
+
+    <sql id="actorJoin">
+        LEFT JOIN space_user u ON u.id = n.actor_user_id
+        LEFT JOIN profile p ON p.user_id = n.actor_user_id
+    </sql>
+
+    <insert id="insert">
+        INSERT INTO notification(
+            id,recipient_user_id,actor_user_id,type,resource_type,
+            resource_id,summary,is_read
+        ) VALUES(
+            #{notification.id},#{notification.recipientUserId},
+            #{notification.actorUserId},#{notification.type},
+            #{notification.resourceType},#{notification.resourceId},
+            #{notification.summary},0
+        )
+    </insert>
+
+    <select id="selectAny"
+            resultType="com.byy.blogprojectbackend.notification.entity.Notification">
+        SELECT
+            id,recipient_user_id AS recipientUserId,actor_user_id AS actorUserId,
+            type,resource_type AS resourceType,resource_id AS resourceId,
+            summary,is_read AS `read`,read_at AS readAt,created_at AS createdAt
+        FROM notification
+        WHERE id=#{id}
+        LIMIT 1
+    </select>
+
+    <select id="selectViewForRecipient"
+            resultType="com.byy.blogprojectbackend.notification.mapper.projection.NotificationRow">
+        SELECT <include refid="viewColumns"/>
+        FROM notification n
+        <include refid="actorJoin"/>
+        WHERE n.id=#{id}
+          AND n.recipient_user_id=#{recipientUserId}
+        LIMIT 1
+    </select>
+
+    <select id="countByRecipient" resultType="long">
+        SELECT COUNT(*)
+        FROM notification
+        WHERE recipient_user_id=#{recipientUserId}
+        <if test="unreadOnly">AND is_read=0</if>
+    </select>
+
+    <select id="selectPage"
+            resultType="com.byy.blogprojectbackend.notification.mapper.projection.NotificationRow">
+        SELECT <include refid="viewColumns"/>
+        FROM notification n
+        <include refid="actorJoin"/>
+        WHERE n.recipient_user_id=#{recipientUserId}
+        <if test="unreadOnly">AND n.is_read=0</if>
+        ORDER BY n.created_at DESC,n.id DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <update id="markRead">
+        UPDATE notification
+        SET is_read=1,read_at=UTC_TIMESTAMP(3)
+        WHERE id=#{id}
+          AND recipient_user_id=#{recipientUserId}
+          AND is_read=0
+    </update>
+
+    <update id="markAllRead">
+        UPDATE notification
+        SET is_read=1,read_at=UTC_TIMESTAMP(3)
+        WHERE recipient_user_id=#{recipientUserId}
+          AND is_read=0
+    </update>
+
+    <select id="countUnread" resultType="long">
+        SELECT COUNT(*)
+        FROM notification
+        WHERE recipient_user_id=#{recipientUserId}
+          AND is_read=0
+    </select>
+
+    <select id="selectAfterId"
+            resultType="com.byy.blogprojectbackend.notification.mapper.projection.NotificationRow">
+        SELECT <include refid="viewColumns"/>
+        FROM notification n
+        <include refid="actorJoin"/>
+        WHERE n.recipient_user_id=#{recipientUserId}
+          AND n.id &gt; #{lastEventId}
+        ORDER BY n.id
+        LIMIT #{limit}
+    </select>
+
+</mapper>

@@ -17,6 +17,7 @@ import com.byy.blogprojectbackend.interaction.service.ReplyResult;
 import com.byy.blogprojectbackend.interaction.vo.ReplyAuthorVO;
 import com.byy.blogprojectbackend.interaction.vo.ReplyVO;
 import com.byy.blogprojectbackend.interaction.vo.VisitorAuthorVO;
+import com.byy.blogprojectbackend.notification.service.NotificationService;
 import com.byy.blogprojectbackend.profile.entity.SpaceProfile;
 import com.byy.blogprojectbackend.profile.mapper.SpaceProfileMapper;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class GuestbookServiceImpl implements GuestbookService {
     private final GuestbookMapper guestbookMapper;
     private final SpaceProfileMapper profileMapper;
     private final IdGenerator idGenerator;
+    private final NotificationService notificationService;
 
     @Override
     public PageVO<GuestbookVO> list(int page, int pageSize, Long currentUserId) {
@@ -64,6 +66,11 @@ public class GuestbookServiceImpl implements GuestbookService {
         if (guestbookMapper.insertTopLevel(entry) != 1) {
             throw new IllegalStateException("留言创建失败");
         }
+        notificationService.notifyGuestbookCreated(
+                userId,
+                profile.getDisplayName(),
+                entry.getId()
+        );
         return toVO(requireView(entry.getId()), userId);
     }
 
@@ -124,6 +131,13 @@ public class GuestbookServiceImpl implements GuestbookService {
         } else {
             throw new ResourceConflictException("该留言已经有 Owner 回复");
         }
+
+        notificationService.notifyGuestbookReplied(
+                ownerId,
+                profile.getDisplayName(),
+                parent.getAuthorUserId(),
+                entryId
+        );
 
         return new ReplyResult<>(toVO(requireView(parent.getId()), ownerId), created);
     }

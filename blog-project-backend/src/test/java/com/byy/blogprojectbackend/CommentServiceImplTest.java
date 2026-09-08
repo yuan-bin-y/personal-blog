@@ -12,6 +12,7 @@ import com.byy.blogprojectbackend.common.exception.ForbiddenOperationException;
 import com.byy.blogprojectbackend.common.id.IdGenerator;
 import com.byy.blogprojectbackend.profile.entity.SpaceProfile;
 import com.byy.blogprojectbackend.profile.mapper.SpaceProfileMapper;
+import com.byy.blogprojectbackend.notification.service.NotificationService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -32,10 +33,12 @@ class CommentServiceImplTest {
     private final CommentMapper commentMapper = mock(CommentMapper.class);
     private final SpaceProfileMapper profileMapper = mock(SpaceProfileMapper.class);
     private final IdGenerator idGenerator = mock(IdGenerator.class);
+    private final NotificationService notificationService = mock(NotificationService.class);
     private final CommentServiceImpl commentService = new CommentServiceImpl(
             commentMapper,
             profileMapper,
-            idGenerator
+            idGenerator,
+            notificationService
     );
 
     @Test
@@ -80,6 +83,11 @@ class CommentServiceImplTest {
         assertEquals("这篇文章很有帮助。", inserted.getContent());
         assertEquals(String.valueOf(commentId), result.id());
         assertTrue(result.ownedByMe());
+        verify(notificationService).notifyCommentCreated(
+                userId,
+                "暖光访客",
+                postId
+        );
     }
 
     @Test

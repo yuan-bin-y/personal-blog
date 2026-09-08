@@ -9,6 +9,7 @@ MySQL 8.x database scripts generated from the frozen `docs/DATABASE_DESIGN.md` a
 - `03_visitor_accounts.sql`：允许 `space_user.role=VISITOR`，用于 Visitor 注册。
 - `04_post_like.sql`：新增登录用户的 Post 点赞关系表。
 - `05_media_asset.sql`：新增 Owner 媒体资产表及上传/删除恢复状态。
+- `06_notification.sql`：新增通知持久化表，供通知中心和 SSE 断线补偿使用。
 
 ## Execution
 
@@ -20,9 +21,10 @@ mysql -u root -p < 02_seed.sql
 mysql -u root -p < 03_visitor_accounts.sql
 mysql -u root -p < 04_post_like.sql
 mysql -u root -p < 05_media_asset.sql
+mysql -u root -p < 06_notification.sql
 ```
 
-也可以在 MySQL 客户端中按编号依次 `SOURCE` 五个文件。
+也可以在 MySQL 客户端中按编号依次 `SOURCE` 六个文件。
 
 要求：
 
@@ -77,6 +79,6 @@ mysql -u root -p < 05_media_asset.sql
 
 ## Re-running
 
-- `01_schema.sql` / `02_seed.sql` 使用 `IF NOT EXISTS` / `INSERT IGNORE`；`03`～`05` 是已有数据库的增量迁移，应按编号记录执行情况。
+- `01_schema.sql` / `02_seed.sql` 使用 `IF NOT EXISTS` / `INSERT IGNORE`；`03`～`06` 是已有数据库的增量迁移，应按编号记录执行情况。
 - 这些文件不是迁移框架。已有表发生结构变更后，应新增版本化迁移脚本，不要依赖重新运行 `01_schema.sql` 修改旧表。
 - 正式执行前仍建议备份目标数据库。
