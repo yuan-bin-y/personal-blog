@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.byy.blogprojectbackend.post.mapper.PostAdvancedMapper">
+    <update id="schedule">
+        UPDATE post
+        SET status='SCHEDULED', published_at=#{publishAt}, updated_by=#{ownerId}, version=version+1
+        WHERE id=#{id} AND deleted=0 AND version=#{version}
+    </update>
+
+    <update id="cancelSchedule">
+        UPDATE post
+        SET status='DRAFT', published_at=NULL, updated_by=#{ownerId}, version=version+1
+        WHERE id=#{id} AND deleted=0 AND status='SCHEDULED' AND version=#{version}
+    </update>
+
+    <!-- INSERT ... SELECT makes the baseVersion check and autosave write one atomic statement. -->
+    <insert id="saveAutosave">
+        INSERT INTO post_autosave(id,post_id,post_type,payload_json,base_version,saved_at,updated_by)
+        SELECT #{autosave.id},p.id,#{autosave.postType},#{autosave.payloadJson},#{autosave.baseVersion},UTC_TIMESTAMP(3),#{autosave.updatedBy}
+        FROM post p
+        WHERE p.id=#{autosave.postId} AND p.type=#{autosave.postType}
+          AND p.deleted=0 AND p.version=#{autosave.baseVersion}
+        ON DUPLICATE KEY UPDATE
+          post_type=VALUES(post_type),payload_json=VALUES(payload_json),
+          base_version=VALUES(base_version),saved_at=VALUES(saved_at),updated_by=VALUES(updated_by)
+    </insert>
+
+    <select id="countVersions" resultType="long">
+        SELECT COUNT(*) FROM post_version WHERE post_id=#{postId}
+    </select>
+
+    <select id="selectVersions" resultType="com.byy.blogprojectbackend.post.mapper.projection.PostVersionRow">
+        SELECT id,post_id AS postId,version_no AS versionNo,post_type AS postType,
+               summary,created_at AS createdAt
+        FROM post_version WHERE post_id=#{postId}
+        ORDER BY version_no DESC,id DESC LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="selectVersion" resultType="com.byy.blogprojectbackend.post.mapper.projection.PostVersionRow">
+        SELECT id,post_id AS postId,version_no AS versionNo,post_type AS postType,
+               summary,snapshot_json AS snapshotJson,created_at AS createdAt
+        FROM post_version WHERE post_id=#{postId} AND id=#{versionId} LIMIT 1
+    </select>
+
+    <select id="selectVersionByNumber" resultType="com.byy.blogprojectbackend.post.mapper.projection.PostVersionRow">
+        SELECT id,post_id AS postId,version_no AS versionNo,post_type AS postType,
+               summary,snapshot_json AS snapshotJson,created_at AS createdAt
+        FROM post_version WHERE post_id=#{postId} AND version_no=#{versionNo} LIMIT 1
+    </select>
+
+    <insert id="insertVersion">
+        INSERT INTO post_version(id,post_id,version_no,post_type,summary,snapshot_json,created_by)
+        VALUES(#{version.id},#{version.postId},#{version.versionNo},#{version.postType},
+               #{version.summary},#{version.snapshotJson},#{version.createdBy})
+        ON DUPLICATE KEY UPDATE id=id
+    </insert>
+
+    <select id="selectTagIds" resultType="long">
+        SELECT tag_id FROM post_tag WHERE post_id=#{postId} ORDER BY tag_id
+    </select>
+
+    <select id="selectActiveMedia" resultType="com.byy.blogprojectbackend.post.entity.PostMedia">
+        SELECT id,post_id,usage_type,media_type,url,poster_url,alt_text,width,height,
+               sort_order,created_at,updated_at,deleted,deleted_at
+        FROM post_media WHERE post_id=#{postId} AND deleted=0 ORDER BY sort_order,id
+    </select>
+
+    <update id="restoreSnapshot">
+        UPDATE post
+        SET slug=#{post.slug},title=#{post.title},summary=#{post.summary},content=#{post.content},
+            content_format=#{post.contentFormat},category_id=#{post.categoryId},
+            reading_time_minutes=#{post.readingTimeMinutes},status=#{post.status},
+            published_at=#{post.publishedAt},updated_by=#{ownerId},version=version+1
+        WHERE id=#{post.id} AND deleted=0 AND version=#{version}
+    </update>
+
+    <select id="countTrash" resultType="long">
+        SELECT COUNT(*) FROM post WHERE deleted=1 AND (#{type}='ALL' OR type=#{type})
+    </select>
+
+    <select id="selectTrash" resultType="com.byy.blogprojectbackend.post.mapper.projection.PostFeedRow">
+        SELECT p.id,p.type,p.slug,p.title,p.summary,p.content,p.content_format AS contentFormat,
+               p.created_by AS authorUserId,pf.display_name AS authorName,pf.avatar_url AS authorAvatar,
+               c.id AS categoryId,c.name AS categoryName,c.slug AS categorySlug,
+               c.description AS categoryDescription,c.deleted AS categoryDeleted,
+               p.created_at AS createdAt,p.updated_at AS updatedAt,p.published_at AS publishedAt,
+               p.reading_time_minutes AS readingTime,p.status,p.like_count AS likeCount,
+               p.comment_count AS commentCount,p.version
+        FROM post p INNER JOIN profile pf ON pf.user_id=p.created_by
+        LEFT JOIN category c ON c.id=p.category_id
+        WHERE p.deleted=1 AND (#{type}='ALL' OR p.type=#{type})
+        ORDER BY p.deleted_at DESC,p.id DESC LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <update id="restoreTrash">
+        UPDATE post
+        SET deleted=0,deleted_at=NULL,deleted_by=NULL,status='DRAFT',published_at=NULL,
+            updated_by=#{ownerId},version=version+1
+        WHERE id=#{id} AND deleted=1 AND version=#{version}
+    </update>
+
+    <!-- Only restore the media batch deleted together most recently, not obsolete media from older edits. -->
+    <update id="restoreLatestDeletedMedia">
+        UPDATE post_media
+        SET deleted=0,deleted_at=NULL
+        WHERE post_id=#{postId} AND deleted=1
+          AND deleted_at=(SELECT latest.deleted_at FROM (
+              SELECT MAX(deleted_at) AS deleted_at FROM post_media WHERE post_id=#{postId}
+          ) latest)
+    </update>
+
+    <update id="publishNow">
+        UPDATE post SET status='PUBLISHED',published_at=UTC_TIMESTAMP(3),updated_by=#{ownerId},version=version+1
+        WHERE id=#{id} AND deleted=0 AND version=#{version}
+    </update>
+
+    <update id="updateSlug">
+        UPDATE post SET slug=#{slug},updated_by=#{ownerId},version=version+1
+        WHERE id=#{id} AND type='TECH' AND deleted=0 AND version=#{version}
+    </update>
+
+    <select id="countSlugExcluding" resultType="int">
+        SELECT COUNT(*) FROM post WHERE slug=#{slug} AND id&lt;&gt;#{id}
+    </select>
+
+    <select id="selectDueScheduled" resultType="com.byy.blogprojectbackend.post.entity.Post">
+        SELECT * FROM post
+        WHERE status='SCHEDULED' AND deleted=0 AND published_at&lt;=UTC_TIMESTAMP(3)
+        ORDER BY published_at,id LIMIT #{limit}
+    </select>
+
+    <update id="publishScheduled">
+        UPDATE post SET status='PUBLISHED',version=version+1
+        WHERE id=#{id} AND status='SCHEDULED' AND deleted=0
+          AND published_at&lt;=UTC_TIMESTAMP(3) AND version=#{version}
+    </update>
+</mapper>

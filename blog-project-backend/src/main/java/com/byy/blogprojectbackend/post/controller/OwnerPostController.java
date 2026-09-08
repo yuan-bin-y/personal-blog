@@ -38,7 +38,7 @@ public class OwnerPostController {
             @RequestParam(defaultValue = "ALL")
             @Pattern(regexp = "ALL|TECH|MOMENT") String type,
             @RequestParam(defaultValue = "ALL")
-            @Pattern(regexp = "ALL|DRAFT|PUBLISHED") String status,
+            @Pattern(regexp = "ALL|DRAFT|SCHEDULED|PUBLISHED") String status,
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "10") @Min(1) @Max(50) int pageSize
     ) {

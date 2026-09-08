@@ -11,6 +11,7 @@ import com.byy.blogprojectbackend.post.entity.PostMedia;
 import com.byy.blogprojectbackend.post.mapper.PostMapper;
 import com.byy.blogprojectbackend.post.mapper.projection.*;
 import com.byy.blogprojectbackend.post.service.OwnerPostService;
+import com.byy.blogprojectbackend.post.service.PostVersionSnapshotService;
 import com.byy.blogprojectbackend.post.vo.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ public class OwnerPostServiceImpl implements OwnerPostService {
     private final PostMapper postMapper;
     private final IdGenerator idGenerator;
     private final ApplicationEventPublisher eventPublisher;
+    private final PostVersionSnapshotService snapshotService;
 
     @Override
     public PageVO<PostSummaryVO> list(String type,String status,int page,int pageSize){
@@ -71,6 +73,7 @@ public class OwnerPostServiceImpl implements OwnerPostService {
         post.setSlug(old.getSlug()); post.setTitle(dto.title().trim()); post.setSummary(dto.summary().trim());
         post.setCategoryId(categoryId); post.setReadingTimeMinutes(readingTime(dto.content()));
         post.setPublishedAt(publicationTime(old,dto.status()));
+        snapshotService.capture(postMapper.selectById(id), ownerId);
         update(post,dto.version()); replaceTags(id,tagIds);
         replaceMedia(id,dto.cover()==null?List.of():List.of(dto.cover()),COVER);
         TechDetailVO result = getTech(id);
@@ -97,7 +100,9 @@ public class OwnerPostServiceImpl implements OwnerPostService {
     @Override @Transactional
     public MomentDetailVO updateMoment(Long id,UpdateMomentDTO dto,Long ownerId){
         PostFeedRow old=requireRow(id,MOMENT); Post post=base(id,MOMENT,dto.content(),"PLAIN_TEXT",dto.status(),ownerId);
-        post.setPublishedAt(publicationTime(old,dto.status())); update(post,dto.version());
+        post.setPublishedAt(publicationTime(old,dto.status()));
+        snapshotService.capture(postMapper.selectById(id), ownerId);
+        update(post,dto.version());
         replaceMedia(id,dto.images(),CONTENT);
         MomentDetailVO result = getMoment(id);
         publishSearchChange(id);
@@ -123,6 +128,7 @@ public class OwnerPostServiceImpl implements OwnerPostService {
 
     private void delete(Long id,String type,int version,Long ownerId){
         requireRow(id,type);
+        snapshotService.capture(postMapper.selectById(id), ownerId);
         if(postMapper.softDeleteOwnerPost(id,type,version,ownerId)!=1)throw new VersionConflictException("内容已被其他请求修改，请刷新后重试");
         postMapper.softDeletePostMedia(id);
         publishSearchChange(id);

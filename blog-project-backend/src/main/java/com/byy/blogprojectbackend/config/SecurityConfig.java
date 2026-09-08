@@ -70,6 +70,33 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/owner/posts/tech/*", "/api/owner/posts/moments/*")
                         .hasAuthority(AuthorityConstants.Permission.POST_DELETE.getCode())
 
+                        // 内容高级能力按业务动作复用现有 Post 权限。
+                        .requestMatchers(HttpMethod.POST, "/api/owner/posts/import/markdown")
+                        .hasAuthority(AuthorityConstants.Permission.POST_CREATE.getCode())
+
+                        .requestMatchers(HttpMethod.GET, "/api/owner/posts/trash")
+                        .hasAuthority(AuthorityConstants.Permission.POST_DELETE.getCode())
+
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/owner/posts/*/restore",
+                                "/api/owner/posts/batch/delete")
+                        .hasAuthority(AuthorityConstants.Permission.POST_DELETE.getCode())
+
+                        .requestMatchers(HttpMethod.PUT,
+                                "/api/owner/posts/*/schedule",
+                                "/api/owner/posts/*/autosave",
+                                "/api/owner/posts/tech/*/slug")
+                        .hasAuthority(AuthorityConstants.Permission.POST_EDIT.getCode())
+
+                        .requestMatchers(HttpMethod.DELETE, "/api/owner/posts/*/schedule")
+                        .hasAuthority(AuthorityConstants.Permission.POST_EDIT.getCode())
+
+                        .requestMatchers(
+                                "/api/owner/posts/*/versions",
+                                "/api/owner/posts/*/versions/**",
+                                "/api/owner/posts/batch/publish")
+                        .hasAuthority(AuthorityConstants.Permission.POST_EDIT.getCode())
+
                         .requestMatchers("/api/owner/categories", "/api/owner/categories/**")
                         .hasAuthority(AuthorityConstants.Permission.CATEGORY_MANAGE.getCode())
 

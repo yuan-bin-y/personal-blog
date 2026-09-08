@@ -68,6 +68,9 @@ app:
     context-post-limit: ${AI_CONTEXT_POST_LIMIT:5}
     max-context-characters: ${AI_MAX_CONTEXT_CHARACTERS:12000}
     requests-per-minute: ${AI_REQUESTS_PER_MINUTE:10}
+  post:
+    # 单实例 V1 定时发布轮询间隔；条件更新保证同一文章只会成功发布一次。
+    schedule-check-ms: ${POST_SCHEDULE_CHECK_MS:30000}
 
 server:
   port: 8080
