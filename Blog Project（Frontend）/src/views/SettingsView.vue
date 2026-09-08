@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import TaxonomyManager from '../components/owner/TaxonomyManager.vue'
+import MediaLibrary from '../components/owner/MediaLibrary.vue'
 import { apiMessage } from '../api/request'
 import { useOwnerMode } from '../stores/useOwnerMode'
 import { useSpaceRuntime } from '../stores/useSpaceRuntime'
@@ -70,7 +71,7 @@ onMounted(async () => {
     <template v-if="isOwner">
       <header class="settings-intro"><p>OWNER MODE</p><h1>把空间整理成喜欢的样子</h1><span>保存后会写入 BinSpace 数据库。这里不是独立后台，而是主人视角下的空间设置。</span></header>
       <p v-if="error" class="settings-error">{{ error }}</p>
-      <nav class="settings-index" aria-label="设置目录"><a href="#profile">资料</a><a href="#hero">背景</a><a href="#announcement">公告</a><a href="#music">音乐</a><a href="#basic">基本信息</a><a href="#appearance">外观</a><a href="#page-media">页面媒体</a><a href="#taxonomy">分类标签</a></nav>
+      <nav class="settings-index" aria-label="设置目录"><a href="#profile">资料</a><a href="#hero">背景</a><a href="#announcement">公告</a><a href="#music">音乐</a><a href="#basic">基本信息</a><a href="#appearance">外观</a><a href="#page-media">页面媒体</a><a href="#media-library">媒体库</a><a href="#taxonomy">分类标签</a></nav>
 
       <section id="profile" class="settings-section"><header><span>01</span><div><h2>个人资料</h2><p>显示在空间侧栏和动态作者区域。</p></div></header><form @submit.prevent="saveProfile"><label>名字<input v-model="profileDraft.name" required /></label><label>头像 URL<input v-model="profileDraft.avatar" placeholder="/media/avatar.jpg" /></label><label>角色<input v-model="profileDraft.role" /></label><label class="settings-section__wide">简介<textarea v-model="profileDraft.bio" rows="3"></textarea></label><label class="settings-section__wide">当前状态<input v-model="profileDraft.statusText" /></label><footer><span v-if="saved.profile">已保存到数据库</span><button type="submit">保存资料</button></footer></form></section>
 
@@ -86,7 +87,9 @@ onMounted(async () => {
 
       <section id="page-media" class="settings-section"><header><span>07</span><div><h2>页面媒体</h2><p>填写已有媒体 URL；上传能力后续接入 OSS。</p></div></header><form @submit.prevent="savePageMedia"><fieldset v-for="(item, key) in pageMediaDraft" :key="key" class="settings-media"><legend>{{ key }}</legend><label>视频<input v-model="item.video" /></label><label>海报 / 背景<input v-model="item.poster" /></label><label>叠加层<input v-model="item.overlay" /></label><label>动态方式<input v-model="item.motion" /></label><label>环境效果<input v-model="item.effect" /></label></fieldset><footer><span v-if="saved.media">已保存到数据库</span><button type="submit">保存页面媒体</button></footer></form></section>
 
-      <section id="taxonomy" class="settings-section settings-section--stack"><header><span>08</span><div><h2>分类与标签</h2><p>停用后不再作为新文章候选项，历史文章仍保留名称。</p></div></header><TaxonomyManager /></section>
+      <section id="media-library" class="settings-section settings-section--stack"><header><span>08</span><div><h2>空间媒体库</h2><p>上传到后端配置的 Local 或 OSS 存储，复制 URL 后可填入上面的空间配置。</p></div></header><MediaLibrary /></section>
+
+      <section id="taxonomy" class="settings-section settings-section--stack"><header><span>09</span><div><h2>分类与标签</h2><p>停用后不再作为新文章候选项，历史文章仍保留名称。</p></div></header><TaxonomyManager /></section>
 
       <aside class="settings-preview"><div><strong>退出主人模式</strong><span>退出后将清除当前浏览器会话中的 Access Token，并恢复公开内容列表。</span></div><button type="button" @click="leaveOwnerMode">退出登录</button></aside>
     </template>

@@ -7,8 +7,10 @@ import CommentSection from '../components/comment/CommentSection.vue'
 import OwnerToolbar from '../components/owner/OwnerToolbar.vue'
 import OwnerDialog from '../components/owner/OwnerDialog.vue'
 import OwnerPostEditor from '../components/owner/OwnerPostEditor.vue'
+import OwnerPostAdvancedPanel from '../components/owner/OwnerPostAdvancedPanel.vue'
 import { useOwnerMode } from '../stores/useOwnerMode'
 import { useSpaceRuntime } from '../stores/useSpaceRuntime'
+import { getRelatedPosts } from '../api/search'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,9 +19,11 @@ const runtime = useSpaceRuntime()
 const post = computed(() => runtime.findTech(route.params.slug))
 const editorOpen = ref(false)
 const deleteOpen = ref(false)
+const related = ref([])
 const formatDate = (value) => new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value))
 const save = async (draft) => { await runtime.updatePost(post.value.id, draft); editorOpen.value = false }
 const confirmDelete = async () => { await runtime.deletePost(post.value); router.push('/tech') }
+const advancedUpdated = (updated) => { if (updated.slug && updated.slug !== route.params.slug) router.replace(`/tech/${updated.slug}`) }
 onMounted(async () => {
   await initializeOwnerMode()
   let cached = runtime.findTech(route.params.slug)
@@ -29,6 +33,9 @@ onMounted(async () => {
   }
   if (isOwner.value && cached?.id) await runtime.loadOwnerTech(cached.id)
   else await runtime.loadTechDetail(route.params.slug)
+  if (post.value?.id) {
+    try { related.value = await getRelatedPosts(post.value.id, 4) } catch { related.value = [] }
+  }
 })
 </script>
 
@@ -37,9 +44,11 @@ onMounted(async () => {
     <article v-if="post" class="article-runtime">
       <RouterLink class="article-runtime__back" to="/tech"><span aria-hidden="true">←</span> 返回技术文章</RouterLink>
       <header><div class="article-runtime__kicker"><span>TECH</span><i></i>{{ post.category }}</div><h1>{{ post.title }}</h1><p>{{ post.summary }}</p><div class="article-runtime__meta"><span>{{ post.readingTime }} min read</span><time :datetime="post.createdAt">{{ formatDate(post.createdAt) }}</time></div><OwnerToolbar v-if="isOwner" label="文章管理" @edit="editorOpen = true" @delete="deleteOpen = true" /></header>
+      <OwnerPostAdvancedPanel v-if="isOwner" :post="post" @updated="advancedUpdated" @slug-updated="(slug) => router.replace(`/tech/${slug}`)" />
       <MediaFrame v-if="post.images?.[0]" class="article-runtime__cover" :media="post.images[0]" eager />
       <div class="article-runtime__body"><p>{{ post.content }}</p></div>
       <footer><span v-for="tag in post.tags" :key="tag">#{{ tag }}</span></footer>
+      <section v-if="related.length" class="related-posts"><p>KEEP READING</p><h2>也许还想看看</h2><div><RouterLink v-for="item in related" :key="item.id" :to="item.type === 'TECH' ? `/tech/${item.slug}` : `/moments/${item.id}`"><span>{{ item.type }}</span><strong>{{ item.title || '一条说说' }}</strong><small>{{ item.summary || item.content }}</small></RouterLink></div></section>
       <CommentSection :post-id="post.id" title="评论" />
     </article>
     <section v-else class="article-page__pending">
@@ -86,6 +95,7 @@ onMounted(async () => {
 .related-posts > p { margin: 0; color: var(--color-accent); font-family: var(--font-mono); font-size: var(--font-size-eyebrow); font-weight: 700; letter-spacing: 0.12em; }
 .related-posts h2 { margin: var(--space-2) 0 var(--space-6); font-family: var(--font-serif); font-size: var(--font-size-h2); }
 .related-posts > div { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-4); }
+.related-posts a { display: grid; gap: var(--space-2); padding: var(--space-4) 0; color: inherit; border-bottom: 1px solid var(--color-border); text-decoration: none; }.related-posts a span { color: var(--color-accent); font-family: var(--font-mono); font-size: .6875rem; }.related-posts a strong { font-family: var(--font-serif); font-size: 1.15rem; }.related-posts a small { color: var(--color-text-secondary); line-height: 1.6; }
 .article-page__missing { padding: calc(var(--navbar-height) + var(--space-24)) 0; text-align: center; }
 .article-page__missing h1 { font-family: var(--font-serif); }.article-page__missing a { color: var(--color-accent); }
 @media (max-width: 1099px) { .article-layout { grid-template-columns: minmax(0, 72ch); gap: var(--space-8); } }

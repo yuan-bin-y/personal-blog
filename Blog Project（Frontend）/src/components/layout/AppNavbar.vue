@@ -4,6 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { navigationItems } from '../../mock/site'
 import { useOwnerMode } from '../../stores/useOwnerMode'
 import { useSpaceRuntime } from '../../stores/useSpaceRuntime'
+import NotificationCenter from './NotificationCenter.vue'
 
 defineProps({
   tone: {
@@ -17,8 +18,8 @@ const menuOpen = ref(false)
 const publishOpen = ref(false)
 const route = useRoute()
 const router = useRouter()
-const { isOwner } = useOwnerMode()
-const { state: space } = useSpaceRuntime()
+const { isOwner, isAuthenticated, currentUser, logout } = useOwnerMode()
+const { state: space, loadPublicFeed } = useSpaceRuntime()
 const menuButton = ref(null)
 const menuPanel = ref(null)
 let previousBodyOverflow = ''
@@ -27,6 +28,7 @@ const startPublishing = (type) => {
   publishOpen.value = false
   router.push({ path: type === 'TECH' ? '/tech' : '/moments', query: { compose: '1' } })
 }
+const leaveAccount = async () => { await logout(); await loadPublicFeed(); publishOpen.value = false }
 
 const closeMenu = ({ restoreFocus = true } = {}) => {
   menuOpen.value = false
@@ -102,6 +104,11 @@ onBeforeUnmount(() => { document.body.style.overflow = previousBodyOverflow })
         </template>
       </nav>
 
+      <div class="navbar__utilities">
+        <RouterLink class="navbar__search" to="/search" aria-label="搜索空间">⌕</RouterLink>
+        <NotificationCenter v-if="isAuthenticated" />
+      </div>
+
       <div v-if="isOwner" class="navbar__owner-actions">
         <div class="navbar__publish">
           <button type="button" :aria-expanded="publishOpen" @click="publishOpen = !publishOpen">＋ 发布</button>
@@ -112,7 +119,8 @@ onBeforeUnmount(() => { document.body.style.overflow = previousBodyOverflow })
         </div>
         <RouterLink class="navbar__settings" to="/settings" aria-label="空间设置">⚙ <span>空间设置</span></RouterLink>
       </div>
-      <RouterLink v-else class="navbar__owner-login" to="/owner-login" aria-label="主人登录">主人登录</RouterLink>
+      <div v-else-if="isAuthenticated" class="navbar__account"><RouterLink to="/me/likes">{{ currentUser?.displayName }}</RouterLink><button type="button" @click="leaveAccount">退出</button></div>
+      <RouterLink v-else class="navbar__owner-login" to="/owner-login" aria-label="登录或注册">登录</RouterLink>
 
       <button
         ref="menuButton"
@@ -165,7 +173,10 @@ onBeforeUnmount(() => { document.body.style.overflow = previousBodyOverflow })
         <button type="button" @click="startPublishing('TECH')">＋ 写文章</button>
         <RouterLink to="/settings" @click="closeMenu({ restoreFocus: false })">⚙ 空间设置</RouterLink>
       </div>
-      <RouterLink v-else class="navbar__mobile-login" to="/owner-login" @click="closeMenu({ restoreFocus: false })">主人登录</RouterLink>
+      <RouterLink class="navbar__mobile-login" to="/search" @click="closeMenu({ restoreFocus: false })">搜索 / AI 问答</RouterLink>
+      <RouterLink v-if="isAuthenticated" class="navbar__mobile-login" to="/me/likes" @click="closeMenu({ restoreFocus: false })">我的点赞</RouterLink>
+      <button v-if="isAuthenticated && !isOwner" class="navbar__mobile-login" type="button" @click="leaveAccount(); closeMenu({ restoreFocus: false })">{{ currentUser?.displayName }} · 退出登录</button>
+      <RouterLink v-else-if="!isAuthenticated" class="navbar__mobile-login" to="/owner-login" @click="closeMenu({ restoreFocus: false })">登录或注册</RouterLink>
     </nav>
   </header>
 </template>
@@ -247,6 +258,9 @@ onBeforeUnmount(() => { document.body.style.overflow = previousBodyOverflow })
   margin-left: var(--space-8);
 }
 .navbar__owner-actions { display: flex; align-items: center; gap: var(--space-2); margin-left: var(--space-3); }
+.navbar__utilities{display:flex;align-items:center;gap:var(--space-2);margin-left:var(--space-2)}
+.navbar__search{display:grid;width:38px;height:38px;place-items:center;color:inherit;border:1px solid currentColor;border-radius:50%;font-size:1.2rem;text-decoration:none;opacity:.8}
+.navbar__account{display:flex;align-items:center;gap:var(--space-2);margin-left:var(--space-2);font-size:.75rem;font-weight:700;white-space:nowrap}.navbar__account a,.navbar__account button{color:inherit;background:transparent;border:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px;opacity:.7}
 .navbar__owner-login { display: inline-flex; min-height: 38px; align-items: center; margin-left: var(--space-3); padding: 0 var(--space-3); color: inherit; border: 1px solid currentColor; border-radius: var(--radius-pill); font-size: .75rem; font-weight: 700; text-decoration: none; white-space: nowrap; opacity: .78; }
 .navbar__publish { position: relative; }
 .navbar__publish > button,
@@ -384,6 +398,9 @@ onBeforeUnmount(() => { document.body.style.overflow = previousBodyOverflow })
   .navbar__desktop-nav { display: none; }
   .navbar__owner-actions { display: none; }
   .navbar__owner-login { display: none; }
+  .navbar__utilities { margin-left: auto; }
+  .navbar__utilities .navbar__search { display:none; }
+  .navbar__account { display:none; }
   .navbar__menu-button { display: inline-flex; }
   .navbar__brand-copy small { display: none; }
 }

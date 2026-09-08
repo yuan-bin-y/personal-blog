@@ -5,6 +5,9 @@ import BackendPending from '../components/layout/BackendPending.vue'
 import MomentPostCard from '../components/post/MomentPostCard.vue'
 import OwnerDialog from '../components/owner/OwnerDialog.vue'
 import OwnerPostEditor from '../components/owner/OwnerPostEditor.vue'
+import OwnerBatchBar from '../components/owner/OwnerBatchBar.vue'
+import OwnerTrash from '../components/owner/OwnerTrash.vue'
+import { apiMessage } from '../api/request'
 import { useOwnerMode } from '../stores/useOwnerMode'
 import { useSpaceRuntime } from '../stores/useSpaceRuntime'
 
@@ -15,6 +18,10 @@ const { momentPosts, createMoment, updatePost, deletePost, loadMoments, loadOwne
 const editorOpen = ref(false)
 const editing = ref(null)
 const deleting = ref(null)
+const trashOpen = ref(false)
+const selected = ref(new Set())
+const batchBusy = ref(false)
+const batchMessage = ref('')
 const groups = computed(() => {
   const result = new Map()
   ;[...momentPosts.value].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).forEach((post) => {
@@ -30,6 +37,23 @@ const closeEditor = () => { editorOpen.value = false; editing.value = null; if (
 const startEdit = (post) => { editing.value = post; editorOpen.value = true }
 const save = async (draft) => { editing.value ? await updatePost(editing.value.id, draft) : await createMoment(draft); closeEditor() }
 const confirmDelete = async () => { await deletePost(deleting.value); deleting.value = null }
+const allMoments = computed(() => groups.value.flatMap((group) => group.posts))
+const selectedPosts = computed(() => allMoments.value.filter((post) => selected.value.has(post.id)))
+const toggle = (id) => { const next = new Set(selected.value); next.has(id) ? next.delete(id) : next.add(id); selected.value = next }
+const toggleAll = () => { selected.value = selected.value.size === allMoments.value.length ? new Set() : new Set(allMoments.value.map((post) => post.id)) }
+const runBatch = async (action) => {
+  if (!selectedPosts.value.length) return
+  if (action === 'delete' && !window.confirm(`将选中的 ${selectedPosts.value.length} 条说说移到回收站？`)) return
+  batchBusy.value = true
+  batchMessage.value = ''
+  try {
+    const runtime = useSpaceRuntime()
+    const result = action === 'publish' ? await runtime.batchPublishPosts(selectedPosts.value) : await runtime.batchDeletePosts(selectedPosts.value)
+    batchMessage.value = `成功 ${result.succeededIds.length} 项${result.failed.length ? `，失败 ${result.failed.length} 项` : ''}`
+    selected.value = new Set(result.failed.map((item) => item.postId))
+  } catch (reason) { batchMessage.value = apiMessage(reason) }
+  finally { batchBusy.value = false }
+}
 onMounted(async () => {
   await initializeOwnerMode()
   if (isOwner.value) await loadOwnerPosts()
@@ -44,12 +68,14 @@ onMounted(async () => {
       <button v-if="isOwner" type="button" @click="editorOpen = true">＋ 发说说</button>
       <span>有些是几句话，有些是一张图，都是当时想记住的时刻。</span>
     </header>
+    <OwnerBatchBar v-if="isOwner && allMoments.length" :selected="selected.size" :total="allMoments.length" :busy="batchBusy" :message="batchMessage" @toggle-all="toggleAll" @publish="runBatch('publish')" @delete="runBatch('delete')" @trash="trashOpen = true" />
     <div class="moments-timeline">
-      <section v-for="group in groups" :key="group.label" class="moments-month"><header><span aria-hidden="true"></span><h2>{{ group.label }}</h2><small>{{ group.posts.length }} MOMENTS</small></header><div class="moments-month__list"><MomentPostCard v-for="post in group.posts" :key="post.id" :post="post" presentation="timeline" @edit="startEdit" @delete="deleting = $event" /></div></section>
+      <section v-for="group in groups" :key="group.label" class="moments-month"><header><span aria-hidden="true"></span><h2>{{ group.label }}</h2><small>{{ group.posts.length }} MOMENTS</small></header><div class="moments-month__list"><div v-for="post in group.posts" :key="post.id" class="owner-selectable"><label v-if="isOwner" class="owner-selectable__check"><input type="checkbox" :checked="selected.has(post.id)" @change="toggle(post.id)" /><span>选择此说说</span></label><MomentPostCard :post="post" presentation="timeline" @edit="startEdit" @delete="deleting = $event" /></div></div></section>
       <BackendPending v-if="!groups.length" title="暂无说说" :description="isOwner ? '数据库中还没有说说，可以发布第一条动态。' : '数据库中还没有已发布的说说。'" />
     </div>
     <OwnerDialog :open="editorOpen" :title="editing ? '编辑说说' : '发说说'" @close="closeEditor"><OwnerPostEditor type="MOMENT" :post="editing" @save="save" @cancel="closeEditor" /></OwnerDialog>
     <OwnerDialog :open="Boolean(deleting)" title="确认删除说说" description="删除后说说将不再公开显示。" @close="deleting = null"><div class="delete-confirm"><p>确定删除这条说说吗？</p><footer><button type="button" @click="deleting = null">取消</button><button class="is-danger" type="button" @click="confirmDelete">确认删除</button></footer></div></OwnerDialog>
+    <OwnerDialog :open="trashOpen" title="说说回收站" @close="trashOpen = false"><OwnerTrash v-if="trashOpen" type="MOMENT" @restored="loadOwnerPosts" /></OwnerDialog>
   </main>
 </template>
 
@@ -86,6 +112,7 @@ onMounted(async () => {
 .moments-month small { color: var(--color-text-secondary); font-family: var(--font-mono); font-size: 0.625rem; }
 .moments-month__list { position: relative; display: grid; gap: var(--space-3); padding-left: var(--space-8); }
 .moments-month__list::before { position: absolute; top: 0; bottom: 0; left: 5px; width: 1px; background: var(--color-border); content: ''; }
+.owner-selectable { position: relative; }.owner-selectable__check { position: absolute; z-index: 3; top: var(--space-4); left: calc(var(--space-8) * -1); display: grid; width: 22px; height: 22px; place-items: center; background: var(--color-surface); border: 1px solid var(--color-border-strong); border-radius: 50%; cursor: pointer; }.owner-selectable__check input { width: 14px; height: 14px; accent-color: var(--color-accent); }.owner-selectable__check span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .delete-confirm p { margin: 0; }.delete-confirm footer { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6); }.delete-confirm button { min-height: 42px; padding: 0 var(--space-4); background: transparent; border: 1px solid var(--color-border); border-radius: var(--radius-pill); cursor: pointer; font-weight: 700; }.delete-confirm .is-danger { color: white; background: var(--color-error); border-color: var(--color-error); }
 @media (max-width: 600px) {
   .moments-page { padding: var(--space-5); border-radius: var(--radius-lg); }
@@ -95,5 +122,6 @@ onMounted(async () => {
   .moments-month + .moments-month { margin-top: var(--space-12); }
   .moments-month__list { gap: var(--space-2); padding-left: 0; }
   .moments-month__list::before { display: none; }
+  .owner-selectable__check { position: static; margin: 0 0 var(--space-2) auto; }
 }
 </style>

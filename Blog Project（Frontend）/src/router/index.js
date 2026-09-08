@@ -10,6 +10,8 @@ import AboutView from '../views/AboutView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import OwnerLoginView from '../views/OwnerLoginView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
+import SearchView from '../views/SearchView.vue'
+import MyLikesView from '../views/MyLikesView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -69,13 +71,25 @@ const router = createRouter({
       path: '/owner-login',
       name: 'owner-login',
       component: OwnerLoginView,
-      meta: { navMode: 'surface', title: '主人登录' },
+      meta: { navMode: 'surface', title: '登录与注册' },
     },
     {
       path: '/settings',
       name: 'settings',
       component: SettingsView,
       meta: { navMode: 'surface', title: '空间设置' },
+    },
+    {
+      path: '/search',
+      name: 'search',
+      component: SearchView,
+      meta: { navMode: 'surface', title: '搜索' },
+    },
+    {
+      path: '/me/likes',
+      name: 'my-likes',
+      component: MyLikesView,
+      meta: { navMode: 'surface', title: '我的点赞' },
     },
     {
       path: '/:pathMatch(.*)*',

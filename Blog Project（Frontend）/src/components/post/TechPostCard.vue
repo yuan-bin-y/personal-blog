@@ -19,7 +19,7 @@ const { isOwner } = useOwnerMode()
   <article class="tech-card" :class="[`tech-card--${variant}`, { 'tech-card--compact': compact }]">
     <OwnerToolbar v-if="isOwner" class="tech-card__owner-tools" label="文章管理" @edit="$emit('edit', post)" @delete="$emit('delete', post)" />
     <div class="tech-card__body">
-      <div class="tech-card__kicker"><span>TECH</span><i></i>{{ post.category }}</div>
+      <div class="tech-card__kicker"><span>TECH</span><i></i>{{ post.category }}<em v-if="isOwner && post.status !== 'PUBLISHED'">{{ post.status === 'SCHEDULED' ? '等待发布' : '草稿' }}</em></div>
       <h3><RouterLink :to="`/tech/${post.slug}`">{{ post.title }}</RouterLink></h3>
       <p class="tech-card__summary">{{ post.summary }}</p>
       <div class="tech-card__tags" aria-label="文章标签">
@@ -30,7 +30,7 @@ const { isOwner } = useOwnerMode()
       </div>
       <div class="tech-card__footer">
         <RouterLink class="tech-card__read" :to="`/tech/${post.slug}`">阅读全文 <span aria-hidden="true">→</span></RouterLink>
-        <PostActions :like-count="post.likeCount" :comment-count="post.commentCount" :comments-to="{ path: `/tech/${post.slug}`, hash: '#comments' }" />
+        <PostActions :post-id="String(post.id)" :like-count="post.likeCount" :liked-by-me="post.likedByMe" :comment-count="post.commentCount" :comments-to="{ path: `/tech/${post.slug}`, hash: '#comments' }" />
       </div>
     </div>
     <MediaFrame v-if="post.images?.[0]" class="tech-card__cover" :media="post.images[0]" />
@@ -58,6 +58,7 @@ const { isOwner } = useOwnerMode()
 .tech-card__kicker { display: flex; align-items: center; gap: var(--space-2); color: var(--color-text-secondary); font-size: var(--font-size-eyebrow); font-weight: 700; letter-spacing: 0.1em; }
 .tech-card__kicker span { color: var(--color-accent); }
 .tech-card__kicker i { width: 18px; height: 1px; background: var(--color-border-strong); }
+.tech-card__kicker em { margin-left: auto; padding: 3px 8px; color: var(--color-warning); background: color-mix(in srgb, var(--color-warning) 9%, transparent); border-radius: var(--radius-pill); font-family: var(--font-sans); font-size: .68rem; font-style: normal; letter-spacing: 0; }
 .tech-card h3 { margin: var(--space-3) 0 0; font-family: var(--font-serif); font-size: var(--font-size-h3); line-height: 1.35; }
 .tech-card h3 a { text-decoration: none; }
 .tech-card h3 a:hover { color: var(--color-accent); }

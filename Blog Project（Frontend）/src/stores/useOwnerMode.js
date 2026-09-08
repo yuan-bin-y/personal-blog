@@ -7,6 +7,7 @@ const ownerState = reactive({
   ready: false,
   loading: false,
   isOwner: false,
+  isAuthenticated: false,
   identity: null,
   permissions: [],
   error: '',
@@ -15,7 +16,8 @@ const ownerState = reactive({
 let initialization
 
 const applyIdentity = (identity) => {
-  ownerState.identity = identity
+  ownerState.identity = identity || { authenticated: false, role: 'VISITOR', user: null, permissions: [] }
+  ownerState.isAuthenticated = identity?.authenticated === true
   ownerState.isOwner = identity?.authenticated === true && identity?.role === 'OWNER'
   ownerState.permissions = identity?.permissions || []
 }
@@ -49,6 +51,21 @@ const loginOwner = async (credentials) => {
   }
 }
 
+const registerVisitor = async (payload) => {
+  ownerState.loading = true
+  ownerState.error = ''
+  try {
+    const result = await authApi.register(payload)
+    applyIdentity(result.identity)
+    return result.identity
+  } catch (error) {
+    ownerState.error = apiMessage(error)
+    throw error
+  } finally {
+    ownerState.loading = false
+  }
+}
+
 const logoutOwner = async () => {
   try {
     if (getAccessToken()) await authApi.logout()
@@ -60,9 +77,14 @@ const logoutOwner = async () => {
 export const useOwnerMode = () => ({
   state: ownerState,
   isOwner: computed(() => ownerState.isOwner),
+  isAuthenticated: computed(() => ownerState.isAuthenticated),
+  currentUser: computed(() => ownerState.identity?.user || null),
   ready: computed(() => ownerState.ready),
   initializeOwnerMode,
   loginOwner,
+  login: loginOwner,
+  registerVisitor,
   logoutOwner,
+  logout: logoutOwner,
   hasPermission: (permission) => ownerState.permissions.includes(permission),
 })

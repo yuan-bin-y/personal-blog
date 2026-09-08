@@ -6,6 +6,7 @@ import MomentPostCard from '../components/post/MomentPostCard.vue'
 import CommentSection from '../components/comment/CommentSection.vue'
 import OwnerDialog from '../components/owner/OwnerDialog.vue'
 import OwnerPostEditor from '../components/owner/OwnerPostEditor.vue'
+import OwnerPostAdvancedPanel from '../components/owner/OwnerPostAdvancedPanel.vue'
 import { useSpaceRuntime } from '../stores/useSpaceRuntime'
 import { useOwnerMode } from '../stores/useOwnerMode'
 
@@ -29,7 +30,7 @@ onMounted(async () => {
   <main id="main-content" class="moment-detail-page">
     <div class="moment-detail-page__content">
       <RouterLink class="moment-detail-page__back" to="/moments"><span aria-hidden="true">←</span> 返回说说</RouterLink>
-      <template v-if="post"><MomentPostCard :post="post" detail @edit="editorOpen = true" @delete="deleteOpen = true" /><CommentSection :post-id="post.id" title="评论" /></template>
+      <template v-if="post"><MomentPostCard :post="post" detail @edit="editorOpen = true" @delete="deleteOpen = true" /><OwnerPostAdvancedPanel v-if="isOwner" :post="post" /><CommentSection :post-id="post.id" title="评论" /></template>
       <BackendPending v-else description="说说详情、点赞数和评论都需要后端数据库支持。" />
     </div>
     <OwnerDialog :open="editorOpen" title="编辑说说" @close="editorOpen = false"><OwnerPostEditor v-if="post" type="MOMENT" :post="post" @save="save" @cancel="editorOpen = false" /></OwnerDialog>

@@ -8,10 +8,12 @@ import SpaceLayout from './layouts/SpaceLayout.vue'
 import AppearanceControls from './components/home/AppearanceControls.vue'
 import { useOwnerMode } from './stores/useOwnerMode'
 import { useSpaceRuntime } from './stores/useSpaceRuntime'
+import { useNotifications } from './stores/useNotifications'
 
 const route = useRoute()
-const { isOwner, initializeOwnerMode } = useOwnerMode()
+const { isOwner, isAuthenticated, initializeOwnerMode } = useOwnerMode()
 const { state: space, initialize, loadOwnerPosts } = useSpaceRuntime()
+const notifications = useNotifications()
 const heroVisible = ref(false)
 const isHome = computed(() => route.name === 'home')
 const isImmersive = computed(() => isHome.value && space.appearance.layoutMode === 'immersive')
@@ -64,6 +66,8 @@ onMounted(async () => {
   await Promise.all([initializeOwnerMode(), initialize()])
   if (isOwner.value) await loadOwnerPosts()
 })
+
+watch(isAuthenticated, (active) => active ? notifications.start() : notifications.stop())
 </script>
 
 <template>

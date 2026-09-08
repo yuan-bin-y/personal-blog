@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import BackendPending from '../components/layout/BackendPending.vue'
 import GuestbookEntry from '../components/guestbook/GuestbookEntry.vue'
+import GuestbookForm from '../components/guestbook/GuestbookForm.vue'
 import { useSpaceRuntime } from '../stores/useSpaceRuntime'
 const { state, loadGuestbook } = useSpaceRuntime()
 onMounted(loadGuestbook)
@@ -15,7 +16,7 @@ onMounted(loadGuestbook)
       <span>这里的话写给空间主人，不属于某一篇文章或说说。</span>
     </header>
     <div class="guestbook-layout">
-      <section aria-labelledby="leave-message-title"><h2 id="leave-message-title">给玢留句话</h2><BackendPending compact description="Visitor 留言提交接口尚未开放，当前可以浏览已有留言。" /></section>
+      <section aria-labelledby="leave-message-title"><h2 id="leave-message-title">给玢留句话</h2><GuestbookForm /></section>
       <section aria-labelledby="message-list-title"><header><div><h2 id="message-list-title">空间留言</h2><p>留言属于整个个人空间，不属于某篇内容。</p></div></header><div v-if="state.guestbook.length" class="guestbook-list"><GuestbookEntry v-for="(entry, index) in state.guestbook" :key="entry.id" :entry="entry" :index="index" /></div><BackendPending v-else compact title="暂无留言" description="数据库中当前还没有空间留言。" /></section>
     </div>
   </main>

@@ -120,6 +120,36 @@ const deletePost = async (post) => {
   runtime.posts = runtime.posts.filter((item) => item.id !== post.id)
 }
 
+const schedulePost = async (post, publishAt) => replacePost(
+  await postApi.schedulePost(post.id, publishAt, post.version),
+)
+const cancelScheduledPost = async (post) => replacePost(
+  await postApi.cancelScheduledPost(post.id, post.version),
+)
+const restorePostVersion = async (post, versionId) => replacePost(
+  await postApi.restorePostVersion(post.id, versionId, post.version),
+)
+const updateTechSlug = async (post, slug) => replacePost(
+  await postApi.updateTechSlug(post.id, slug, post.version),
+)
+const loadTrash = async (type) => {
+  const page = await postApi.getPostTrash({ type, page: 1, pageSize: 50 })
+  return { ...page, items: page.items.map(normalizePost) }
+}
+const restoreTrashedPost = async (post) => replacePost(
+  await postApi.restoreTrashedPost(post.id, post.version),
+)
+const batchPublishPosts = async (posts) => {
+  const result = await postApi.batchPublishPosts(posts.map(({ id, version }) => ({ postId: String(id), version })))
+  await loadOwnerPosts()
+  return result
+}
+const batchDeletePosts = async (posts) => {
+  const result = await postApi.batchDeletePosts(posts.map(({ id, version }) => ({ postId: String(id), version })))
+  await loadOwnerPosts()
+  return result
+}
+
 const loadTech = async (category) => {
   const page = await postApi.getPublicTech({ category: category || undefined, page: 1, pageSize: 50 })
   runtime.posts = [...runtime.posts.filter((post) => post.type !== 'TECH'), ...page.items.map(normalizePost)]
@@ -178,6 +208,16 @@ export const useSpaceRuntime = () => ({
   createMoment,
   updatePost,
   deletePost,
+  schedulePost,
+  cancelScheduledPost,
+  getPostVersions: (postId, params = { page: 1, pageSize: 20 }) => postApi.getPostVersions(postId, params),
+  getPostVersion: postApi.getPostVersion,
+  restorePostVersion,
+  loadTrash,
+  restoreTrashedPost,
+  batchPublishPosts,
+  batchDeletePosts,
+  updateTechSlug,
   loadTech,
   loadPublicFeed,
   loadOwnerPosts,
@@ -204,6 +244,28 @@ export const useSpaceRuntime = () => ({
     const index = runtime.comments.findIndex((item) => item.id === updated.id)
     if (index >= 0) runtime.comments[index] = updated
   },
+  createComment: async (postId, content) => {
+    const created = await interactionApi.createComment(postId, content)
+    runtime.comments.push(created)
+    const post = runtime.posts.find((item) => String(item.id) === String(postId))
+    if (post) post.commentCount = Number(post.commentCount || 0) + 1
+    return created
+  },
+  updateOwnComment: async (id, content) => {
+    const updated = await interactionApi.updateOwnComment(id, content)
+    const index = runtime.comments.findIndex((item) => item.id === updated.id)
+    if (index >= 0) runtime.comments[index] = updated
+    return updated
+  },
+  deleteOwnComment: async (id) => {
+    const current = runtime.comments.find((item) => item.id === id)
+    await interactionApi.deleteOwnComment(id)
+    runtime.comments = runtime.comments.filter((item) => item.id !== id)
+    if (current?.postId) {
+      const post = runtime.posts.find((item) => String(item.id) === String(current.postId))
+      if (post) post.commentCount = Math.max(0, Number(post.commentCount || 0) - 1)
+    }
+  },
   deleteComment: async (id) => {
     await interactionApi.deleteComment(id)
     runtime.comments = runtime.comments.filter((item) => item.id !== id)
@@ -212,6 +274,21 @@ export const useSpaceRuntime = () => ({
     const updated = await interactionApi.replyGuestbook(id, content)
     const index = runtime.guestbook.findIndex((item) => item.id === updated.id)
     if (index >= 0) runtime.guestbook[index] = updated
+  },
+  createGuestbook: async (content) => {
+    const created = await interactionApi.createGuestbook(content)
+    runtime.guestbook.unshift(created)
+    return created
+  },
+  updateOwnGuestbook: async (id, content) => {
+    const updated = await interactionApi.updateOwnGuestbook(id, content)
+    const index = runtime.guestbook.findIndex((item) => item.id === updated.id)
+    if (index >= 0) runtime.guestbook[index] = updated
+    return updated
+  },
+  deleteOwnGuestbook: async (id) => {
+    await interactionApi.deleteOwnGuestbook(id)
+    runtime.guestbook = runtime.guestbook.filter((item) => item.id !== id)
   },
   deleteGuestbook: async (id) => {
     await interactionApi.deleteGuestbook(id)

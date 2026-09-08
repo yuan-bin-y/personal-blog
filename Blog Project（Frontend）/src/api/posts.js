@@ -14,3 +14,45 @@ export const deleteTech = (id, version) => request.delete(`/owner/posts/tech/${i
 export const createMoment = (body) => request.post('/owner/posts/moments', body).then(responseData)
 export const updateMoment = (id, body) => request.put(`/owner/posts/moments/${id}`, body).then(responseData)
 export const deleteMoment = (id, version) => request.delete(`/owner/posts/moments/${id}`, { params: { version } })
+
+// Owner Advanced Posts
+export const schedulePost = (postId, publishAt, version) => request.put(
+  `/owner/posts/${postId}/schedule`,
+  { publishAt, version },
+).then(responseData)
+export const cancelScheduledPost = (postId, version) => request.delete(
+  `/owner/posts/${postId}/schedule`,
+  { params: { version } },
+).then(responseData)
+export const autosavePost = (postId, body) => request.put(
+  `/owner/posts/${postId}/autosave`,
+  body,
+).then(responseData)
+export const getPostVersions = (postId, params) => request.get(
+  `/owner/posts/${postId}/versions`,
+  { params },
+).then(responseData)
+export const getPostVersion = (postId, versionId) => request.get(
+  `/owner/posts/${postId}/versions/${versionId}`,
+).then(responseData)
+export const restorePostVersion = (postId, versionId, version) => request.post(
+  `/owner/posts/${postId}/versions/${versionId}/restore`,
+  { version },
+).then(responseData)
+export const getPostTrash = (params) => request.get('/owner/posts/trash', { params }).then(responseData)
+export const restoreTrashedPost = (postId, version) => request.post(
+  `/owner/posts/${postId}/restore`,
+  null,
+  { params: { version } },
+).then(responseData)
+export const batchPublishPosts = (items) => request.post('/owner/posts/batch/publish', { items }).then(responseData)
+export const batchDeletePosts = (items) => request.post('/owner/posts/batch/delete', { items }).then(responseData)
+export const updateTechSlug = (id, slug, version) => request.put(
+  `/owner/posts/tech/${id}/slug`,
+  { slug, version },
+).then(responseData)
+export const importMarkdown = (file) => {
+  const form = new FormData()
+  form.append('file', file)
+  return request.post('/owner/posts/import/markdown', form).then(responseData)
+}

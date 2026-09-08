@@ -6,6 +6,9 @@ import BackendPending from '../components/layout/BackendPending.vue'
 import TechPostCard from '../components/post/TechPostCard.vue'
 import OwnerDialog from '../components/owner/OwnerDialog.vue'
 import OwnerPostEditor from '../components/owner/OwnerPostEditor.vue'
+import OwnerBatchBar from '../components/owner/OwnerBatchBar.vue'
+import OwnerTrash from '../components/owner/OwnerTrash.vue'
+import { apiMessage } from '../api/request'
 import { useOwnerMode } from '../stores/useOwnerMode'
 import { useSpaceRuntime } from '../stores/useSpaceRuntime'
 
@@ -16,14 +19,39 @@ const { techPosts, createTech, updatePost, deletePost, loadTech, loadOwnerPosts 
 const editorOpen = ref(false)
 const editing = ref(null)
 const deleting = ref(null)
+const trashOpen = ref(false)
+const selected = ref(new Set())
+const batchBusy = ref(false)
+const batchMessage = ref('')
 const category = ref('ALL')
 const categories = computed(() => ['ALL', ...new Set(techPosts.value.map((post) => post.category).filter(Boolean))])
 const visiblePosts = computed(() => category.value === 'ALL' ? techPosts.value : techPosts.value.filter((post) => post.category === category.value))
+const selectedPosts = computed(() => visiblePosts.value.filter((post) => selected.value.has(post.id)))
 watch(() => route.query.compose, (value) => { if (isOwner.value && value === '1') { editing.value = null; editorOpen.value = true } }, { immediate: true })
 const closeEditor = () => { editorOpen.value = false; editing.value = null; if (route.query.compose) router.replace({ path: '/tech' }) }
 const startEdit = (post) => { editing.value = post; editorOpen.value = true }
 const save = async (draft) => { editing.value ? await updatePost(editing.value.id, draft) : await createTech(draft); closeEditor() }
 const confirmDelete = async () => { await deletePost(deleting.value); deleting.value = null }
+const toggle = (id) => {
+  const next = new Set(selected.value)
+  next.has(id) ? next.delete(id) : next.add(id)
+  selected.value = next
+}
+const toggleAll = () => { selected.value = selected.value.size === visiblePosts.value.length ? new Set() : new Set(visiblePosts.value.map((post) => post.id)) }
+const runBatch = async (action) => {
+  if (!selectedPosts.value.length) return
+  if (action === 'delete' && !window.confirm(`将选中的 ${selectedPosts.value.length} 篇文章移到回收站？`)) return
+  batchBusy.value = true
+  batchMessage.value = ''
+  try {
+    const result = action === 'publish'
+      ? await useSpaceRuntime().batchPublishPosts(selectedPosts.value)
+      : await useSpaceRuntime().batchDeletePosts(selectedPosts.value)
+    batchMessage.value = `成功 ${result.succeededIds.length} 项${result.failed.length ? `，失败 ${result.failed.length} 项` : ''}`
+    selected.value = new Set(result.failed.map((item) => item.postId))
+  } catch (reason) { batchMessage.value = apiMessage(reason) }
+  finally { batchBusy.value = false }
+}
 onMounted(async () => {
   await initializeOwnerMode()
   if (isOwner.value) await loadOwnerPosts()
@@ -37,11 +65,13 @@ onMounted(async () => {
     <section class="tech-index" aria-labelledby="tech-index-title">
       <header><h2 id="tech-index-title">文章索引</h2><button v-if="isOwner" class="tech-index__create" type="button" @click="editorOpen = true">＋ 写文章</button></header>
       <nav v-if="categories.length > 1" class="tech-index__filters" aria-label="文章分类"><button v-for="item in categories" :key="item" :class="{ 'is-active': category === item }" type="button" @click="category = item">{{ item }}</button></nav>
-      <div v-if="visiblePosts.length" class="tech-index__list"><TechPostCard v-for="(post, index) in visiblePosts" :key="post.id" :post="post" :variant="index === 0 ? 'featured' : index % 3 === 1 ? 'row' : 'editorial'" @edit="startEdit" @delete="deleting = $event" /></div>
+      <OwnerBatchBar v-if="isOwner && visiblePosts.length" :selected="selected.size" :total="visiblePosts.length" :busy="batchBusy" :message="batchMessage" @toggle-all="toggleAll" @publish="runBatch('publish')" @delete="runBatch('delete')" @trash="trashOpen = true" />
+      <div v-if="visiblePosts.length" class="tech-index__list"><div v-for="(post, index) in visiblePosts" :key="post.id" class="owner-selectable"><label v-if="isOwner" class="owner-selectable__check"><input type="checkbox" :checked="selected.has(post.id)" @change="toggle(post.id)" /><span>选择</span></label><TechPostCard :post="post" :variant="index === 0 ? 'featured' : index % 3 === 1 ? 'row' : 'editorial'" @edit="startEdit" @delete="deleting = $event" /></div></div>
       <BackendPending v-else title="暂无文章" :description="isOwner ? '数据库中还没有文章，可以写下第一篇草稿。' : '数据库中还没有已发布的技术文章。'" />
     </section>
     <OwnerDialog :open="editorOpen" :title="editing ? '编辑文章' : '写文章'" size="large" @close="closeEditor"><OwnerPostEditor type="TECH" :post="editing" @save="save" @cancel="closeEditor" /></OwnerDialog>
     <OwnerDialog :open="Boolean(deleting)" title="确认删除文章" description="删除后文章将不再公开显示。" @close="deleting = null"><div class="delete-confirm"><p>确定删除“{{ deleting?.title }}”吗？</p><footer><button type="button" @click="deleting = null">取消</button><button class="is-danger" type="button" @click="confirmDelete">确认删除</button></footer></div></OwnerDialog>
+    <OwnerDialog :open="trashOpen" title="技术文章回收站" @close="trashOpen = false"><OwnerTrash v-if="trashOpen" type="TECH" @restored="loadOwnerPosts" /></OwnerDialog>
   </main>
 </template>
 
@@ -58,6 +88,7 @@ onMounted(async () => {
 .tech-index__featured { margin-top: var(--space-8); }
 .tech-index__featured > p { margin: 0 0 var(--space-3); color: var(--color-accent); font-family: var(--font-mono); font-size: var(--font-size-eyebrow); font-weight: 700; letter-spacing: 0.12em; }
 .tech-index__list { display: grid; margin-top: var(--space-6); }
+.owner-selectable { position: relative; }.owner-selectable__check { position: absolute; z-index: 3; top: var(--space-3); left: var(--space-3); display: inline-flex; align-items: center; gap: var(--space-1); padding: 5px 9px; color: var(--color-text-secondary); background: color-mix(in srgb, var(--color-surface) 88%, transparent); border: 1px solid var(--color-border); border-radius: var(--radius-pill); font-size: .68rem; cursor: pointer; }.owner-selectable__check input { accent-color: var(--color-accent); }.owner-selectable__check span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .delete-confirm p { margin: 0; }.delete-confirm footer { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6); }.delete-confirm button { min-height: 42px; padding: 0 var(--space-4); background: transparent; border: 1px solid var(--color-border); border-radius: var(--radius-pill); cursor: pointer; font-weight: 700; }.delete-confirm .is-danger { color: white; background: var(--color-error); border-color: var(--color-error); }
 @media (max-width: 600px) {
   .tech-page { padding: var(--space-5); border-radius: var(--radius-lg); }

@@ -55,14 +55,14 @@ const formatDate = (value) => {
         <time v-if="detail" :datetime="post.createdAt">{{ formatDate(post.createdAt) }}</time>
         <RouterLink v-else :to="`/moments/${post.id}`">{{ formatDate(post.createdAt) }}</RouterLink>
       </div>
-      <span class="moment-card__type">MOMENT</span>
+      <span class="moment-card__type">{{ isOwner && post.status !== 'PUBLISHED' ? (post.status === 'SCHEDULED' ? '等待发布' : '草稿') : 'MOMENT' }}</span>
     </header>
     <p class="moment-card__content">{{ post.content }}</p>
     <div v-if="post.images?.length" class="moment-card__media" :class="`moment-card__media--${Math.min(post.images.length, 3)}`">
       <MediaFrame v-for="media in post.images" :key="media.id" :media="media" />
     </div>
     <footer class="moment-card__footer">
-      <PostActions :like-count="post.likeCount" :comment-count="post.commentCount" :comments-to="{ path: `/moments/${post.id}`, hash: '#comments' }" />
+      <PostActions :post-id="String(post.id)" :like-count="post.likeCount" :liked-by-me="post.likedByMe" :comment-count="post.commentCount" :comments-to="{ path: `/moments/${post.id}`, hash: '#comments' }" />
       <RouterLink v-if="!detail" class="moment-card__open" :to="`/moments/${post.id}`">查看动态 <span aria-hidden="true">→</span></RouterLink>
     </footer>
   </article>

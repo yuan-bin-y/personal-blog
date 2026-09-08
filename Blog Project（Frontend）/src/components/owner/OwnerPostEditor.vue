@@ -1,6 +1,7 @@
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { getCategories, getTags } from '../../api/taxonomy'
+import { autosavePost, importMarkdown } from '../../api/posts'
 import { apiMessage } from '../../api/request'
 
 const props = defineProps({
@@ -12,34 +13,79 @@ const emit = defineEmits(['save', 'cancel'])
 const categories = ref([])
 const tags = ref([])
 const error = ref('')
+const autosaveState = ref('')
+const importing = ref(false)
+let autosaveTimer
+let suppressAutosave = true
 const emptyDraft = () => props.type === 'TECH'
   ? { title: '', summary: '', categoryId: '', tagIds: [], cover: '', content: '', contentFormat: 'MARKDOWN', status: 'DRAFT' }
   : { content: '', images: '', status: 'PUBLISHED' }
 const draft = reactive(emptyDraft())
 
-watch(() => props.post, (post) => {
+watch(() => props.post, async (post) => {
+  suppressAutosave = true
   Object.assign(draft, emptyDraft())
-  if (!post) return
-  if (props.type === 'TECH') Object.assign(draft, post, { categoryId: post.categoryId || '', tagIds: post.tagIds || [], cover: post.cover?.src || post.images?.[0]?.src || '' })
-  else Object.assign(draft, post, { images: post.images?.map((item) => item.src).join('\n') || '' })
+  if (post) {
+    if (props.type === 'TECH') Object.assign(draft, post, { categoryId: post.categoryId || '', tagIds: post.tagIds || [], cover: post.cover?.src || post.images?.[0]?.src || '' })
+    else Object.assign(draft, post, { images: post.images?.map((item) => item.src).join('\n') || '' })
+    // 正式编辑接口只接受 DRAFT/PUBLISHED；编辑已定时内容会先回到草稿，之后可重新设定时间。
+    if (post.status === 'SCHEDULED') draft.status = 'DRAFT'
+  }
+  await nextTick()
+  suppressAutosave = false
 }, { immediate: true })
+
+const imageInputs = () => draft.images.split(/\r?\n/).map((src) => src.trim()).filter(Boolean)
+  .map((src, index) => ({ src, mediaType: 'IMAGE', poster: null, alt: '', width: null, height: null, sortOrder: index }))
+const payload = () => props.type === 'TECH' ? {
+  title: draft.title, summary: draft.summary, content: draft.content,
+  contentFormat: draft.contentFormat, categoryId: String(draft.categoryId || ''), tagIds: [...draft.tagIds],
+  cover: draft.cover.trim() ? { src: draft.cover.trim(), mediaType: 'IMAGE', poster: null, alt: draft.title.trim(), width: null, height: null, sortOrder: 0 } : null,
+  status: draft.status,
+} : { content: draft.content, images: imageInputs(), status: draft.status }
 
 const submit = () => {
   if (!draft.content.trim()) return
   if (props.type === 'TECH' && (!draft.title.trim() || !draft.summary.trim() || !draft.categoryId)) return
   if (props.type === 'TECH') {
-    emit('save', {
-      title: draft.title.trim(), summary: draft.summary.trim(), content: draft.content.trim(),
-      contentFormat: draft.contentFormat, categoryId: String(draft.categoryId), tagIds: [...draft.tagIds],
-      cover: draft.cover.trim() ? { src: draft.cover.trim(), mediaType: 'IMAGE', poster: null, alt: draft.title.trim(), width: null, height: null, sortOrder: 0 } : null,
-      status: draft.status,
-    })
+    const value = payload()
+    emit('save', { ...value, title: value.title.trim(), summary: value.summary.trim(), content: value.content.trim() })
   } else {
-    const images = draft.images.split(/\r?\n/).map((src) => src.trim()).filter(Boolean)
-      .map((src, index) => ({ src, mediaType: 'IMAGE', poster: null, alt: '', width: null, height: null, sortOrder: index }))
-    emit('save', { content: draft.content.trim(), images, status: draft.status })
+    emit('save', { ...payload(), content: draft.content.trim() })
   }
 }
+
+watch(draft, () => {
+  if (suppressAutosave || !props.post?.id || props.post.version == null) return
+  clearTimeout(autosaveTimer)
+  autosaveState.value = '有未保存的编辑'
+  autosaveTimer = window.setTimeout(async () => {
+    autosaveState.value = '正在自动保存…'
+    try {
+      await autosavePost(props.post.id, { type: props.type, payload: payload(), baseVersion: props.post.version })
+      autosaveState.value = '已自动保存草稿'
+    } catch (reason) {
+      autosaveState.value = `自动保存失败：${apiMessage(reason)}`
+    }
+  }, 900)
+}, { deep: true })
+
+const handleMarkdown = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  importing.value = true
+  error.value = ''
+  try {
+    const result = await importMarkdown(file)
+    if (result.title) draft.title = result.title
+    draft.content = result.content
+    const importedTags = Array.isArray(result.frontMatter?.tags) ? result.frontMatter.tags : []
+    if (importedTags.length) draft.tagIds = tags.value.filter((tag) => importedTags.includes(tag.name)).map((tag) => tag.id)
+  } catch (reason) { error.value = apiMessage(reason) }
+  finally { importing.value = false; event.target.value = '' }
+}
+
+onBeforeUnmount(() => clearTimeout(autosaveTimer))
 
 onMounted(async () => {
   if (props.type !== 'TECH') return
@@ -59,8 +105,11 @@ onMounted(async () => {
 <template>
   <form class="owner-editor" @submit.prevent="submit">
     <p class="owner-editor__notice">内容将保存到 BinSpace 数据库。媒体字段当前填写已有 URL。</p>
+    <p v-if="post?.status === 'SCHEDULED'" class="owner-editor__notice">这篇内容正在等待定时发布。保存正文后会先回到草稿，请在详情页重新设置发布时间。</p>
+    <p v-if="post && autosaveState" class="owner-editor__autosave" aria-live="polite">{{ autosaveState }}</p>
     <p v-if="error" class="owner-editor__notice">{{ error }}</p>
     <template v-if="type === 'TECH'">
+      <label class="owner-editor__import">从 Markdown 开始<input type="file" accept=".md,.markdown,text/markdown,text/plain" :disabled="importing" @change="handleMarkdown" /><span>{{ importing ? '正在解析…' : '选择 .md 文件，只导入到当前编辑器，不会直接发布' }}</span></label>
       <label>标题<input v-model="draft.title" required maxlength="120" /></label>
       <label>摘要<textarea v-model="draft.summary" required rows="3" maxlength="320"></textarea></label>
       <div class="owner-editor__split"><label>分类<select v-model="draft.categoryId" required><option value="" disabled>请选择分类</option><option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label>标签<select v-model="draft.tagIds" multiple><option v-for="item in tags" :key="item.id" :value="item.id">{{ item.name }}</option></select></label></div>
@@ -80,6 +129,10 @@ onMounted(async () => {
 <style scoped>
 .owner-editor { display: grid; gap: var(--space-4); }
 .owner-editor__notice { margin: 0; padding: var(--space-3) var(--space-4); color: var(--color-text-secondary); background: var(--color-surface-soft); border-left: 3px solid var(--color-accent); font-size: .8125rem; }
+.owner-editor__autosave { margin: calc(var(--space-2) * -1) 0 0; color: var(--color-text-secondary); font-size: .75rem; text-align: right; }
+.owner-editor__import { padding: var(--space-3) var(--space-4); background: color-mix(in srgb, var(--color-surface-soft) 60%, transparent); border-block: 1px solid var(--color-border); }
+.owner-editor__import input { padding: var(--space-2); background: transparent; border: 0; }
+.owner-editor__import span { color: var(--color-text-secondary); font-size: .72rem; font-weight: 400; }
 .owner-editor label { display: grid; gap: var(--space-2); color: var(--color-text-secondary); font-size: .8125rem; font-weight: 700; }
 .owner-editor input, .owner-editor textarea, .owner-editor select { width: 100%; padding: var(--space-3); color: var(--color-text-primary); background: var(--color-surface); border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); font: inherit; font-weight: 400; resize: vertical; }
 .owner-editor input:focus, .owner-editor textarea:focus { outline: 2px solid var(--color-accent-soft); border-color: var(--color-accent); }
