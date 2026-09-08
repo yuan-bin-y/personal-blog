@@ -91,6 +91,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/owner/media", "/api/owner/media/**")
                         .hasAuthority(AuthorityConstants.Permission.MEDIA_MANAGE.getCode())
 
+                        .requestMatchers("/api/owner/search/reindex", "/api/owner/search/reindex/**")
+                        .hasAuthority(AuthorityConstants.Permission.SEARCH_REINDEX.getCode())
+
                         .requestMatchers("/api/owner/**")
                         .hasRole("OWNER")
 
@@ -195,6 +198,10 @@ public class SecurityConfig {
                                 "/api/posts",
                                 "/api/posts/**"
                         )
+                        .permitAll()
+
+                        // 全文搜索和 AI 问答只读取已发布索引，对 Visitor 开放。
+                        .requestMatchers("/api/search", "/api/search/**")
                         .permitAll()
 
                         // Visitor 公开归档。

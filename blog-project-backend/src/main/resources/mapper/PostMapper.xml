@@ -335,6 +335,80 @@
         LIMIT 1
     </select>
 
+    <!-- 相关内容入口校验：只返回当前可公开访问的 Post。 -->
+    <select id="selectPublicPostById"
+            resultType="com.byy.blogprojectbackend.post.mapper.projection.PostFeedRow">
+        SELECT p.id, p.type, p.slug, p.title, p.summary, p.content,
+               p.content_format AS contentFormat,
+               p.created_by AS authorUserId, pf.display_name AS authorName,
+               pf.avatar_url AS authorAvatar,
+               c.id AS categoryId, c.name AS categoryName, c.slug AS categorySlug,
+               c.description AS categoryDescription, c.deleted AS categoryDeleted,
+               p.created_at AS createdAt, p.updated_at AS updatedAt,
+               p.published_at AS publishedAt,
+               p.reading_time_minutes AS readingTime, p.status,
+               p.like_count AS likeCount, p.comment_count AS commentCount
+        FROM post p
+        INNER JOIN profile pf ON pf.user_id = p.created_by
+        LEFT JOIN category c ON c.id = p.category_id
+        WHERE p.id = #{id}
+          AND p.deleted = 0
+          AND p.status = 'PUBLISHED'
+          AND p.published_at IS NOT NULL
+          AND p.published_at &lt;= UTC_TIMESTAMP(3)
+        LIMIT 1
+    </select>
+
+    <!--
+      V1 相关度：同分类 > 同类型 > 共享标签，同分时优先时间更接近的内容。
+      该结果不使用用户画像，也不读取草稿。
+    -->
+    <select id="selectRelatedPublicPosts"
+            resultType="com.byy.blogprojectbackend.post.mapper.projection.PostFeedRow">
+        SELECT candidate.id, candidate.type, candidate.slug, candidate.title,
+               candidate.summary, candidate.content,
+               candidate.content_format AS contentFormat,
+               candidate.created_by AS authorUserId,
+               pf.display_name AS authorName, pf.avatar_url AS authorAvatar,
+               c.id AS categoryId, c.name AS categoryName, c.slug AS categorySlug,
+               c.description AS categoryDescription, c.deleted AS categoryDeleted,
+               candidate.created_at AS createdAt, candidate.updated_at AS updatedAt,
+               candidate.published_at AS publishedAt,
+               candidate.reading_time_minutes AS readingTime, candidate.status,
+               candidate.like_count AS likeCount,
+               candidate.comment_count AS commentCount
+        FROM post target
+        INNER JOIN post candidate ON candidate.id != target.id
+        INNER JOIN profile pf ON pf.user_id = candidate.created_by
+        LEFT JOIN category c ON c.id = candidate.category_id
+        WHERE target.id = #{postId}
+          AND target.deleted = 0
+          AND target.status = 'PUBLISHED'
+          AND target.published_at &lt;= UTC_TIMESTAMP(3)
+          AND candidate.deleted = 0
+          AND candidate.status = 'PUBLISHED'
+          AND candidate.published_at IS NOT NULL
+          AND candidate.published_at &lt;= UTC_TIMESTAMP(3)
+        ORDER BY
+          (
+            CASE WHEN candidate.category_id IS NOT NULL
+                       AND candidate.category_id = target.category_id THEN 6 ELSE 0 END
+            + CASE WHEN candidate.type = target.type THEN 3 ELSE 0 END
+            + 2 * (
+                SELECT COUNT(*)
+                FROM post_tag candidate_tag
+                INNER JOIN post_tag target_tag
+                        ON target_tag.tag_id = candidate_tag.tag_id
+                WHERE candidate_tag.post_id = candidate.id
+                  AND target_tag.post_id = target.id
+            )
+          ) DESC,
+          ABS(TIMESTAMPDIFF(HOUR, candidate.published_at, target.published_at)) ASC,
+          candidate.published_at DESC,
+          candidate.id DESC
+        LIMIT #{limit}
+    </select>
+
     <!-- 批量查询标签；不排除已逻辑删除标签 -->
     <select id="selectTagsByPostIds"
             resultType="com.byy.blogprojectbackend.post.mapper.projection.PostTagRow">

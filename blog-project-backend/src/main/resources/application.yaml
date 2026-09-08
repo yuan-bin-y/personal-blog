@@ -53,6 +53,21 @@ app:
     sse-timeout-ms: ${SSE_TIMEOUT_MS:1800000}
     heartbeat-ms: ${SSE_HEARTBEAT_MS:25000}
     replay-limit: ${SSE_REPLAY_LIMIT:100}
+  search:
+    base-url: ${ELASTICSEARCH_URL:http://localhost:9200}
+    username: ${ELASTICSEARCH_USERNAME:}
+    password: ${ELASTICSEARCH_PASSWORD:}
+    index-alias: ${ELASTICSEARCH_INDEX_ALIAS:binspace-posts}
+    reindex-batch-size: ${ELASTICSEARCH_REINDEX_BATCH_SIZE:200}
+  ai:
+    # 支持 OpenAI-compatible /v1/chat/completions；密钥只由本地配置或环境变量注入。
+    base-url: ${AI_BASE_URL:}
+    chat-completions-path: ${AI_CHAT_COMPLETIONS_PATH:/v1/chat/completions}
+    api-key: ${AI_API_KEY:}
+    model: ${AI_MODEL:}
+    context-post-limit: ${AI_CONTEXT_POST_LIMIT:5}
+    max-context-characters: ${AI_MAX_CONTEXT_CHARACTERS:12000}
+    requests-per-minute: ${AI_REQUESTS_PER_MINUTE:10}
 
 server:
   port: 8080

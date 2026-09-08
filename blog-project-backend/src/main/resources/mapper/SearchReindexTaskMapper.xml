@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.byy.blogprojectbackend.search.mapper.SearchReindexTaskMapper">
+    <update id="markRunning">
+        UPDATE search_reindex_task
+        SET status = 'RUNNING', started_at = UTC_TIMESTAMP(3), failure_message = NULL
+        WHERE task_id = #{taskId} AND status = 'QUEUED'
+    </update>
+
+    <update id="markSucceeded">
+        UPDATE search_reindex_task
+        SET status = 'SUCCEEDED', indexed_count = #{indexedCount},
+            finished_at = UTC_TIMESTAMP(3), failure_message = NULL
+        WHERE task_id = #{taskId} AND status = 'RUNNING'
+    </update>
+
+    <update id="markFailed">
+        UPDATE search_reindex_task
+        SET status = 'FAILED', finished_at = UTC_TIMESTAMP(3),
+            failure_message = #{failureMessage}
+        WHERE task_id = #{taskId} AND status IN ('QUEUED', 'RUNNING')
+    </update>
+</mapper>

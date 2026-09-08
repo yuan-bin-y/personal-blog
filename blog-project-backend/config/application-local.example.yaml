@@ -23,6 +23,18 @@ app:
       access-key-id: ${OSS_ACCESS_KEY_ID:}
       access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
       bucket-name: ${OSS_BUCKET_NAME:}
+  search:
+    # Elasticsearch 本地单节点默认无账号；如开启安全认证则填写用户名和密码。
+    base-url: http://localhost:9200
+    username: ""
+    password: ""
+    index-alias: binspace-posts
+  ai:
+    # 填写任意兼容 /v1/chat/completions 的大模型服务，不要提交真实 API Key。
+    base-url: CHANGE_ME_OPENAI_COMPATIBLE_BASE_URL
+    chat-completions-path: /v1/chat/completions
+    api-key: CHANGE_ME_AI_API_KEY
+    model: CHANGE_ME_AI_MODEL
 
 # 将来接入第三方服务时，API Key 也只放在本地文件或环境变量中，例如：
 # integrations:

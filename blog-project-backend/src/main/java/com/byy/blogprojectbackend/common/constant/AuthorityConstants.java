@@ -44,7 +44,9 @@ public final class AuthorityConstants {
         GUESTBOOK_REPLY("GUESTBOOK_REPLY", "回复留言"),
         GUESTBOOK_DELETE("GUESTBOOK_DELETE", "删除留言"),
 
-        MEDIA_MANAGE("MEDIA_MANAGE", "媒体管理");
+        MEDIA_MANAGE("MEDIA_MANAGE", "媒体管理"),
+
+        SEARCH_REINDEX("SEARCH_REINDEX", "重建搜索索引");
 
         /** Spring Security 使用的权限编码。 */
         private final String code;
@@ -84,6 +86,8 @@ public final class AuthorityConstants {
             Permission.GUESTBOOK_REPLY.getCode(),
             Permission.GUESTBOOK_DELETE.getCode(),
 
-            Permission.MEDIA_MANAGE.getCode()
+            Permission.MEDIA_MANAGE.getCode(),
+
+            Permission.SEARCH_REINDEX.getCode()
     );
 }

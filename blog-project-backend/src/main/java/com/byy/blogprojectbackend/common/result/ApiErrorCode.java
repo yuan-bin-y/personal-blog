@@ -17,6 +17,8 @@ public enum ApiErrorCode {
     RESOURCE_CONFLICT("资源冲突"),
     PAYLOAD_TOO_LARGE("上传文件过大"),
     UNSUPPORTED_MEDIA_TYPE("不支持的媒体类型"),
+    RATE_LIMITED("请求过于频繁"),
+    UPSTREAM_ERROR("上游服务暂时不可用"),
     INTERNAL_ERROR("服务器内部错误");
 
     /**

@@ -305,6 +305,29 @@ public class PostServiceImpl implements PostService {
         );
     }
 
+    @Override
+    public List<PostSummaryVO> getRelatedPublicPosts(Long postId, int limit) {
+        if (postMapper.selectPublicPostById(postId) == null) {
+            throw new ResourceNotFoundException("内容不存在");
+        }
+
+        List<PostFeedRow> rows = postMapper.selectRelatedPublicPosts(postId, limit);
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> ids = rows.stream().map(PostFeedRow::getId).toList();
+        Map<Long, List<TagVO>> tags = groupTags(postMapper.selectTagsByPostIds(ids));
+        Map<Long, List<MediaVO>> media = groupMedia(postMapper.selectMediaByPostIds(ids));
+        return rows.stream()
+                .map(row -> toPostSummary(
+                        row,
+                        tags.getOrDefault(row.getId(), List.of()),
+                        media.getOrDefault(row.getId(), List.of())
+                ))
+                .toList();
+    }
+
     private PostSummaryVO toPostSummary(
             PostFeedRow row,
             List<TagVO> tags,

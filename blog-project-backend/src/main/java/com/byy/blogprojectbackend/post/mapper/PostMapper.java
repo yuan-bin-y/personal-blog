@@ -82,6 +82,15 @@ public interface PostMapper extends BaseMapper<Post> {
             @Param("id") Long id
     );
 
+    /** 根据 ID 查询任意类型的公开 Post，用于相关内容入口校验。 */
+    PostFeedRow selectPublicPostById(@Param("id") Long id);
+
+    /** 按同类型、同分类、共享标签和时间距离推荐公开 Post。 */
+    List<PostFeedRow> selectRelatedPublicPosts(
+            @Param("postId") Long postId,
+            @Param("limit") int limit
+    );
+
     /**
      * 批量查询 Post 标签。
      */

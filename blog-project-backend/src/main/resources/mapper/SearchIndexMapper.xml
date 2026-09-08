@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.byy.blogprojectbackend.search.mapper.SearchIndexMapper">
+
+    <sql id="publishedSearchDocumentColumns">
+        p.id, p.type, p.slug, p.title, p.summary, p.content,
+        c.slug AS categorySlug, c.name AS categoryName,
+        GROUP_CONCAT(DISTINCT t.slug ORDER BY t.slug SEPARATOR '|||') AS tagSlugs,
+        GROUP_CONCAT(DISTINCT t.name ORDER BY t.name SEPARATOR '|||') AS tagNames,
+        p.published_at AS publishedAt
+    </sql>
+
+    <select id="selectPublishedAfterId"
+            resultType="com.byy.blogprojectbackend.search.mapper.projection.SearchIndexRow">
+        SELECT <include refid="publishedSearchDocumentColumns"/>
+        FROM post p
+        LEFT JOIN category c ON c.id = p.category_id
+        LEFT JOIN post_tag pt ON pt.post_id = p.id
+        LEFT JOIN tag t ON t.id = pt.tag_id
+        WHERE p.id &gt; #{lastId}
+          AND p.deleted = 0
+          AND p.status = 'PUBLISHED'
+          AND p.published_at IS NOT NULL
+          AND p.published_at &lt;= UTC_TIMESTAMP(3)
+        GROUP BY p.id, p.type, p.slug, p.title, p.summary, p.content,
+                 c.slug, c.name, p.published_at
+        ORDER BY p.id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectPublishedById"
+            resultType="com.byy.blogprojectbackend.search.mapper.projection.SearchIndexRow">
+        SELECT <include refid="publishedSearchDocumentColumns"/>
+        FROM post p
+        LEFT JOIN category c ON c.id = p.category_id
+        LEFT JOIN post_tag pt ON pt.post_id = p.id
+        LEFT JOIN tag t ON t.id = pt.tag_id
+        WHERE p.id = #{postId}
+          AND p.deleted = 0
+          AND p.status = 'PUBLISHED'
+          AND p.published_at IS NOT NULL
+          AND p.published_at &lt;= UTC_TIMESTAMP(3)
+        GROUP BY p.id, p.type, p.slug, p.title, p.summary, p.content,
+                 c.slug, c.name, p.published_at
+        LIMIT 1
+    </select>
+</mapper>

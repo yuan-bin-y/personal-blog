@@ -120,4 +120,14 @@ class PostServiceImplTest {
                 () -> postService.getPublicMoment(2001L)
         );
     }
+
+    @Test
+    void getRelatedPublicPosts_whenSourceIsInvisible_throwsNotFound() {
+        when(postMapper.selectPublicPostById(3001L)).thenReturn(null);
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> postService.getRelatedPublicPosts(3001L, 4)
+        );
+    }
 }

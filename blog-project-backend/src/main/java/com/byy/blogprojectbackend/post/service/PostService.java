@@ -5,6 +5,8 @@ import com.byy.blogprojectbackend.post.vo.MomentDetailVO;
 import com.byy.blogprojectbackend.post.vo.PostSummaryVO;
 import com.byy.blogprojectbackend.post.vo.TechDetailVO;
 
+import java.util.List;
+
 public interface PostService {
 
     /**
@@ -48,4 +50,7 @@ public interface PostService {
      * 根据 ID 获取公开 MOMENT 详情。
      */
     MomentDetailVO getPublicMoment(Long id);
+
+    /** 获取不使用个人画像的公开相关内容。 */
+    List<PostSummaryVO> getRelatedPublicPosts(Long postId, int limit);
 }

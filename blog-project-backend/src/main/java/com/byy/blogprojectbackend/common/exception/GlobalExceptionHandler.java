@@ -22,6 +22,9 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import com.byy.blogprojectbackend.media.exception.MediaPayloadTooLargeException;
 import com.byy.blogprojectbackend.media.exception.UnsupportedMediaTypeException;
+import com.byy.blogprojectbackend.search.exception.AiRateLimitException;
+import com.byy.blogprojectbackend.search.exception.AiUpstreamException;
+import com.byy.blogprojectbackend.search.exception.SearchUpstreamException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -236,6 +239,32 @@ public class GlobalExceptionHandler {
                         ApiErrorCode.UNSUPPORTED_MEDIA_TYPE,
                         exception.getMessage()
                 ));
+    }
+
+    /** 公开 AI 问答超过 Redis 限流窗口。 */
+    @ExceptionHandler(AiRateLimitException.class)
+    public ResponseEntity<Result<Void>> handleAiRateLimit(AiRateLimitException exception) {
+        return ResponseEntity
+                .status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(Result.failure(ApiErrorCode.RATE_LIMITED, exception.getMessage()));
+    }
+
+    /** AI 提供方错误映射为 502，不暴露 API Key 或上游响应体。 */
+    @ExceptionHandler(AiUpstreamException.class)
+    public ResponseEntity<Result<Void>> handleAiUpstream(AiUpstreamException exception) {
+        log.warn("AI upstream unavailable: {}", exception.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_GATEWAY)
+                .body(Result.failure(ApiErrorCode.UPSTREAM_ERROR, exception.getMessage()));
+    }
+
+    /** 公开搜索契约使用 500 表示 Elasticsearch 不可用。 */
+    @ExceptionHandler(SearchUpstreamException.class)
+    public ResponseEntity<Result<Void>> handleSearchUpstream(SearchUpstreamException exception) {
+        log.error("Elasticsearch unavailable", exception);
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Result.failure(ApiErrorCode.INTERNAL_ERROR, "搜索服务暂时不可用"));
     }
 
     /** 未知异常只向客户端返回通用信息，详细堆栈写入服务端日志。 */

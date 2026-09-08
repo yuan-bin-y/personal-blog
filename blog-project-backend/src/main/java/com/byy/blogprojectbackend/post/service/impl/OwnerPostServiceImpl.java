@@ -14,7 +14,9 @@ import com.byy.blogprojectbackend.post.service.OwnerPostService;
 import com.byy.blogprojectbackend.post.vo.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
+import com.byy.blogprojectbackend.search.event.PublishedPostChangedEvent;
 
 import java.time.*;
 import java.util.*;
@@ -30,6 +32,7 @@ public class OwnerPostServiceImpl implements OwnerPostService {
     private static final String TECH="TECH", MOMENT="MOMENT", COVER="COVER", CONTENT="CONTENT";
     private final PostMapper postMapper;
     private final IdGenerator idGenerator;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public PageVO<PostSummaryVO> list(String type,String status,int page,int pageSize){
@@ -49,7 +52,9 @@ public class OwnerPostServiceImpl implements OwnerPostService {
         post.setSlug(SlugUtils.normalize(dto.title(),"tech")+"-"+id); post.setTitle(dto.title().trim()); post.setSummary(dto.summary().trim());
         post.setCategoryId(categoryId); post.setReadingTimeMinutes(readingTime(dto.content())); postMapper.insert(post);
         replaceTags(id,tagIds); replaceMedia(id,dto.cover()==null?List.of():List.of(dto.cover()),COVER);
-        return getTech(id);
+        TechDetailVO result = getTech(id);
+        publishSearchChange(id);
+        return result;
     }
 
     @Override public TechDetailVO getTech(Long id){
@@ -68,7 +73,9 @@ public class OwnerPostServiceImpl implements OwnerPostService {
         post.setPublishedAt(publicationTime(old,dto.status()));
         update(post,dto.version()); replaceTags(id,tagIds);
         replaceMedia(id,dto.cover()==null?List.of():List.of(dto.cover()),COVER);
-        return getTech(id);
+        TechDetailVO result = getTech(id);
+        publishSearchChange(id);
+        return result;
     }
 
     @Override @Transactional public void deleteTech(Long id,int version,Long ownerId){delete(id,TECH,version,ownerId);}
@@ -76,7 +83,10 @@ public class OwnerPostServiceImpl implements OwnerPostService {
     @Override @Transactional
     public MomentDetailVO createMoment(CreateMomentDTO dto,Long ownerId){
         Long id=idGenerator.nextId(); Post post=base(id,MOMENT,dto.content(),"PLAIN_TEXT",dto.status(),ownerId);
-        postMapper.insert(post); replaceMedia(id,dto.images(),CONTENT); return getMoment(id);
+        postMapper.insert(post); replaceMedia(id,dto.images(),CONTENT);
+        MomentDetailVO result = getMoment(id);
+        publishSearchChange(id);
+        return result;
     }
 
     @Override public MomentDetailVO getMoment(Long id){
@@ -88,7 +98,10 @@ public class OwnerPostServiceImpl implements OwnerPostService {
     public MomentDetailVO updateMoment(Long id,UpdateMomentDTO dto,Long ownerId){
         PostFeedRow old=requireRow(id,MOMENT); Post post=base(id,MOMENT,dto.content(),"PLAIN_TEXT",dto.status(),ownerId);
         post.setPublishedAt(publicationTime(old,dto.status())); update(post,dto.version());
-        replaceMedia(id,dto.images(),CONTENT); return getMoment(id);
+        replaceMedia(id,dto.images(),CONTENT);
+        MomentDetailVO result = getMoment(id);
+        publishSearchChange(id);
+        return result;
     }
 
     @Override @Transactional public void deleteMoment(Long id,int version,Long ownerId){delete(id,MOMENT,version,ownerId);}
@@ -112,6 +125,7 @@ public class OwnerPostServiceImpl implements OwnerPostService {
         requireRow(id,type);
         if(postMapper.softDeleteOwnerPost(id,type,version,ownerId)!=1)throw new VersionConflictException("内容已被其他请求修改，请刷新后重试");
         postMapper.softDeletePostMedia(id);
+        publishSearchChange(id);
     }
 
     private void validateTaxonomy(Long categoryId,List<Long>tagIds){
@@ -159,5 +173,6 @@ public class OwnerPostServiceImpl implements OwnerPostService {
     private List<Long> parseUniqueIds(List<String> values,String field){LinkedHashSet<Long> ids=new LinkedHashSet<>();for(String v:values)ids.add(parseId(v,field));if(ids.size()!=values.size())throw new IllegalArgumentException(field+" 不能重复");return List.copyOf(ids);}
     private String trim(String value){return value==null||value.isBlank()?null:value.trim();}
     private Instant toInstant(LocalDateTime value){return value==null?null:value.toInstant(ZoneOffset.UTC);}
+    private void publishSearchChange(Long postId){eventPublisher.publishEvent(new PublishedPostChangedEvent(postId));}
     private record Associations(Map<Long,List<TagVO>>tags,Map<Long,List<MediaVO>>media){List<TagVO>tags(Long id){return tags.getOrDefault(id,List.of());}List<MediaVO>media(Long id){return media.getOrDefault(id,List.of());}}
 }
