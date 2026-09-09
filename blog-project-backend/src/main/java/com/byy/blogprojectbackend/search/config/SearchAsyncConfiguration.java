@@ -1,5 +1,6 @@
 package com.byy.blogprojectbackend.search.config;
 
+import com.byy.blogprojectbackend.common.trace.MdcTaskDecorator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -19,6 +20,7 @@ public class SearchAsyncConfiguration {
         executor.setMaxPoolSize(2);
         executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("search-index-");
+        executor.setTaskDecorator(new MdcTaskDecorator());
         executor.initialize();
         return executor;
     }

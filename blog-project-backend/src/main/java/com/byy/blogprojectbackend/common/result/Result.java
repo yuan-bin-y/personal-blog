@@ -1,7 +1,8 @@
 package com.byy.blogprojectbackend.common.result;
 
+import com.byy.blogprojectbackend.common.trace.TraceIdContext;
+
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * V1 API 统一响应外壳，成功与失败共用同一个结构。
@@ -29,7 +30,7 @@ public record Result<T>(
                 SUCCESS_CODE,
                 SUCCESS_MESSAGE,
                 data,
-                UUID.randomUUID().toString()
+                TraceIdContext.getOrCreate()
         );
     }
 
@@ -38,7 +39,7 @@ public record Result<T>(
                 code.code(),
                 message,
                 null,
-                UUID.randomUUID().toString()
+                TraceIdContext.getOrCreate()
         );
     }
 
@@ -49,7 +50,7 @@ public record Result<T>(
                 ApiErrorCode.BAD_REQUEST.code(),
                 "请求参数不正确",
                 Map.copyOf(fieldErrors),
-                UUID.randomUUID().toString()
+                TraceIdContext.getOrCreate()
         );
     }
 }

@@ -82,3 +82,8 @@ app:
 
 server:
   port: 8080
+
+# 所有应用日志都会打印同一个请求链路标识；没有 HTTP 请求上下文时显示 -。
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{traceId:-}] %logger{36} - %msg%n"
