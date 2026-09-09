@@ -2,12 +2,17 @@ package com.byy.blogprojectbackend.media.config;
 
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
+import com.byy.blogprojectbackend.media.enums.MediaStorageProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@ConditionalOnProperty(prefix = "app.media", name = "storage-provider", havingValue = "aliyun-oss")
+@ConditionalOnProperty(
+        prefix = "app.media",
+        name = "storage-provider",
+        havingValue = MediaStorageProvider.ALIYUN_OSS_CODE
+)
 public class AliyunOssConfiguration {
 
     @Bean(destroyMethod = "shutdown")

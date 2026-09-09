@@ -179,8 +179,8 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setId(idGenerator.nextId());
         notification.setRecipientUserId(recipientUserId);
         notification.setActorUserId(actorUserId);
-        notification.setType(type.name());
-        notification.setResourceType(resourceType.name());
+        notification.setType(type.code());
+        notification.setResourceType(resourceType.code());
         notification.setResourceId(resourceId);
         notification.setSummary(shorten(summary));
         notification.setRead(false);
@@ -199,7 +199,7 @@ public class NotificationServiceImpl implements NotificationService {
     private Long ownerUserId() {
         SpaceProfile owner = profileMapper.selectOwnerProfile();
         if (owner == null || owner.getUserId() == null) {
-            throw new ResourceNotFoundException("Owner 资料不存在");
+            throw new ResourceNotFoundException("空间主人资料不存在");
         }
         return owner.getUserId();
     }

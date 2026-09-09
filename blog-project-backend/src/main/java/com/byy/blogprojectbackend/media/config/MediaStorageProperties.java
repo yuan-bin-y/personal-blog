@@ -1,5 +1,6 @@
 package com.byy.blogprojectbackend.media.config;
 
+import com.byy.blogprojectbackend.media.enums.MediaStorageProvider;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -11,7 +12,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "app.media")
 public class MediaStorageProperties {
-    private String storageProvider = "local";
+    private String storageProvider = MediaStorageProvider.LOCAL_CODE;
     private String localRoot = "media-uploads";
     private String publicBaseUrl = "http://localhost:8080/media";
     private long maxImageBytes = 10 * 1024 * 1024L;

@@ -4,6 +4,7 @@ import com.byy.blogprojectbackend.category.dto.CreateCategoryDTO;
 import com.byy.blogprojectbackend.category.dto.UpdateCategoryDTO;
 import com.byy.blogprojectbackend.category.service.CategoryService;
 import com.byy.blogprojectbackend.category.vo.CategoryAdminVO;
+import com.byy.blogprojectbackend.common.enums.FilterStatus;
 import com.byy.blogprojectbackend.common.result.Result;
 import com.byy.blogprojectbackend.common.vo.PageVO;
 import com.byy.blogprojectbackend.post.vo.CategoryVO;
@@ -32,7 +33,7 @@ public class CategoryController {
     }
 
     @GetMapping("/api/owner/categories")
-    public Result<PageVO<CategoryAdminVO>> ownerList(@RequestParam(defaultValue = "ALL") String status,
+    public Result<PageVO<CategoryAdminVO>> ownerList(@RequestParam(defaultValue = FilterStatus.DEFAULT_CODE) String status,
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "10") @Min(1) @Max(50) int pageSize) {
         return Result.success(categoryService.listOwner(status, page, pageSize));

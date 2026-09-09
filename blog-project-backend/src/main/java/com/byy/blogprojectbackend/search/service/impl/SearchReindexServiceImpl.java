@@ -3,6 +3,7 @@ package com.byy.blogprojectbackend.search.service.impl;
 import com.byy.blogprojectbackend.common.exception.ResourceConflictException;
 import com.byy.blogprojectbackend.common.exception.ResourceNotFoundException;
 import com.byy.blogprojectbackend.search.entity.SearchReindexTask;
+import com.byy.blogprojectbackend.search.enums.ReindexTaskStatus;
 import com.byy.blogprojectbackend.search.mapper.SearchReindexTaskMapper;
 import com.byy.blogprojectbackend.search.service.SearchReindexService;
 import com.byy.blogprojectbackend.search.vo.ReindexTaskVO;
@@ -25,7 +26,7 @@ public class SearchReindexServiceImpl implements SearchReindexService {
     public ReindexTaskVO create(Long ownerId) {
         SearchReindexTask task = new SearchReindexTask();
         task.setTaskId(UUID.randomUUID().toString().replace("-", ""));
-        task.setStatus("QUEUED");
+        task.setStatus(ReindexTaskStatus.QUEUED.code());
         task.setCreatedBy(ownerId);
         task.setIndexedCount(0);
 

@@ -1,6 +1,7 @@
 package com.byy.blogprojectbackend.media.job;
 
 import com.byy.blogprojectbackend.media.entity.MediaAsset;
+import com.byy.blogprojectbackend.media.enums.MediaStatus;
 import com.byy.blogprojectbackend.media.mapper.MediaAssetMapper;
 import com.byy.blogprojectbackend.media.service.MediaAssetStateService;
 import com.byy.blogprojectbackend.media.service.MediaService;
@@ -31,13 +32,13 @@ public class MediaRecoveryJob {
                 continue;
             }
             try {
-                if ("DELETE_FAILED".equals(asset.getStatus())) {
+                if (MediaStatus.DELETE_FAILED.matches(asset.getStatus())) {
                     mediaService.delete(asset.getId(), deleteOperator(asset));
-                } else if ("UPLOAD_FAILED".equals(asset.getStatus())) {
+                } else if (MediaStatus.UPLOAD_FAILED.matches(asset.getStatus())) {
                     cleanupFailedUpload(asset);
                 }
             } catch (RuntimeException exception) {
-                log.warn("Media recovery failed, mediaId={}", asset.getId(), exception);
+                log.warn("媒体恢复任务执行失败，mediaId={}", asset.getId(), exception);
             }
         }
     }

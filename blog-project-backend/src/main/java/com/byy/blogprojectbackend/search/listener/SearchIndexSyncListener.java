@@ -37,7 +37,7 @@ public class SearchIndexSyncListener {
                 elasticsearchGateway.upsert(documentFactory.from(row));
             }
         } catch (Exception exception) {
-            log.error("Incremental search indexing failed, postId={}", event.postId(), exception);
+            log.error("搜索增量索引同步失败，postId={}", event.postId(), exception);
         }
     }
 }

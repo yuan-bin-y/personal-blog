@@ -12,7 +12,7 @@ public class RedisTokenValidator implements OAuth2TokenValidator<Jwt> {
 
     private static final OAuth2Error INVALID_TOKEN = new OAuth2Error(
             "invalid_token",
-            "Token session is not active",
+            "Token 会话已失效，请重新登录",
             null
     );
 

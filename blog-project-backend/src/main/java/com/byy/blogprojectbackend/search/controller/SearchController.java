@@ -3,6 +3,7 @@ package com.byy.blogprojectbackend.search.controller;
 import com.byy.blogprojectbackend.common.result.Result;
 import com.byy.blogprojectbackend.common.vo.PageVO;
 import com.byy.blogprojectbackend.post.vo.PostSummaryVO;
+import com.byy.blogprojectbackend.post.enums.PostTypeFilter;
 import com.byy.blogprojectbackend.search.dto.AiSearchDTO;
 import com.byy.blogprojectbackend.search.service.SearchService;
 import com.byy.blogprojectbackend.search.vo.AiSearchVO;
@@ -40,8 +41,8 @@ public class SearchController {
     @GetMapping("/api/search")
     public Result<PageVO<SearchResultVO>> search(
             @RequestParam @NotBlank @Size(max = 100) String q,
-            @RequestParam(defaultValue = "ALL")
-            @Pattern(regexp = "ALL|TECH|MOMENT", message = "type 只能是 ALL、TECH 或 MOMENT") String type,
+            @RequestParam(defaultValue = PostTypeFilter.DEFAULT_CODE)
+            @Pattern(regexp = PostTypeFilter.VALIDATION_PATTERN, message = PostTypeFilter.VALIDATION_MESSAGE) String type,
             @RequestParam(required = false) @Size(max = 80) String category,
             @RequestParam(required = false) @Size(max = 80) String tag,
             @RequestParam(defaultValue = "1") @Min(1) int page,

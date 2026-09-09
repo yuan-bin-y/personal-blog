@@ -3,6 +3,7 @@ package com.byy.blogprojectbackend.post.controller;
 import com.byy.blogprojectbackend.common.result.Result;
 import com.byy.blogprojectbackend.common.vo.PageVO;
 import com.byy.blogprojectbackend.post.service.PostService;
+import com.byy.blogprojectbackend.post.enums.PostTypeFilter;
 import com.byy.blogprojectbackend.post.vo.MomentDetailVO;
 import com.byy.blogprojectbackend.post.vo.PostSummaryVO;
 import com.byy.blogprojectbackend.post.vo.TechDetailVO;
@@ -35,20 +36,20 @@ public class PostController {
      */
     @GetMapping
     public Result<PageVO<PostSummaryVO>> getPublicFeed(
-            @RequestParam(defaultValue = "ALL")
+            @RequestParam(defaultValue = PostTypeFilter.DEFAULT_CODE)
             @Pattern(
-                    regexp = "ALL|TECH|MOMENT",
-                    message = "type 只能是 ALL、TECH 或 MOMENT"
+                    regexp = PostTypeFilter.VALIDATION_PATTERN,
+                    message = PostTypeFilter.VALIDATION_MESSAGE
             )
             String type,
 
             @RequestParam(defaultValue = "1")
-            @Min(value = 1, message = "page 不能小于1")
+            @Min(value = 1, message = "页码不能小于 1")
             int page,
 
             @RequestParam(defaultValue = "10")
-            @Min(value = 1, message = "pageSize 不能小于1")
-            @Max(value = 50, message = "pageSize 不能超过50")
+            @Min(value = 1, message = "每页条数不能小于 1")
+            @Max(value = 50, message = "每页条数不能超过 50")
             int pageSize
     ) {
         return Result.success(
@@ -63,24 +64,24 @@ public class PostController {
             @RequestParam(required = false)
             @Size(
                     max = 80,
-                    message = "category slug 不能超过80个字符"
+                    message = "分类别名不能超过 80 个字符"
             )
             String category,
 
             @RequestParam(required = false)
             @Size(
                     max = 80,
-                    message = "tag slug 不能超过80个字符"
+                    message = "标签别名不能超过 80 个字符"
             )
             String tag,
 
             @RequestParam(defaultValue = "1")
-            @Min(value = 1, message = "page 不能小于1")
+            @Min(value = 1, message = "页码不能小于 1")
             int page,
 
             @RequestParam(defaultValue = "10")
-            @Min(value = 1, message = "pageSize 不能小于1")
-            @Max(value = 50, message = "pageSize 不能超过50")
+            @Min(value = 1, message = "每页条数不能小于 1")
+            @Max(value = 50, message = "每页条数不能超过 50")
             int pageSize
     ) {
         return Result.success(
@@ -99,7 +100,7 @@ public class PostController {
     @GetMapping("/tech/{slug}")
     public Result<TechDetailVO> getPublicTechPost(
             @PathVariable
-            @Size(min = 1, max = 180, message = "slug 长度必须在1到180之间")
+            @Size(min = 1, max = 180, message = "文章别名长度必须在 1 到 180 个字符之间")
             String slug
     ) {
         return Result.success(
@@ -113,22 +114,22 @@ public class PostController {
     @GetMapping("/moments")
     public Result<PageVO<PostSummaryVO>> getPublicMoments(
             @RequestParam(required = false)
-            @Min(value = 1970, message = "year 不能小于1970")
-            @Max(value = 9999, message = "year 不能大于9999")
+            @Min(value = 1970, message = "年份不能小于 1970")
+            @Max(value = 9999, message = "年份不能大于 9999")
             Integer year,
 
             @RequestParam(required = false)
-            @Min(value = 1, message = "month 不能小于1")
-            @Max(value = 12, message = "month 不能大于12")
+            @Min(value = 1, message = "月份不能小于 1")
+            @Max(value = 12, message = "月份不能大于 12")
             Integer month,
 
             @RequestParam(defaultValue = "1")
-            @Min(value = 1, message = "page 不能小于1")
+            @Min(value = 1, message = "页码不能小于 1")
             int page,
 
             @RequestParam(defaultValue = "10")
-            @Min(value = 1, message = "pageSize 不能小于1")
-            @Max(value = 50, message = "pageSize 不能超过50")
+            @Min(value = 1, message = "每页条数不能小于 1")
+            @Max(value = 50, message = "每页条数不能超过 50")
             int pageSize
     ) {
         return Result.success(
@@ -147,7 +148,7 @@ public class PostController {
     @GetMapping("/moments/{id}")
     public Result<MomentDetailVO> getPublicMoment(
             @PathVariable
-            @Positive(message = "id 必须是正整数")
+            @Positive(message = "内容 ID 必须是正整数")
             Long id
     ) {
         return Result.success(

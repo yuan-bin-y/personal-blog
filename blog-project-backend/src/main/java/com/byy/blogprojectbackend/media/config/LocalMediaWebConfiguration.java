@@ -1,5 +1,6 @@
 package com.byy.blogprojectbackend.media.config;
 
+import com.byy.blogprojectbackend.media.enums.MediaStorageProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
@@ -11,7 +12,12 @@ import java.nio.file.Path;
 /** 本地开发存储时，将 media-uploads 映射为只读 /media/**。 */
 @Configuration
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "app.media", name = "storage-provider", havingValue = "local", matchIfMissing = true)
+@ConditionalOnProperty(
+        prefix = "app.media",
+        name = "storage-provider",
+        havingValue = MediaStorageProvider.LOCAL_CODE,
+        matchIfMissing = true
+)
 public class LocalMediaWebConfiguration implements WebMvcConfigurer {
 
     private final MediaStorageProperties properties;

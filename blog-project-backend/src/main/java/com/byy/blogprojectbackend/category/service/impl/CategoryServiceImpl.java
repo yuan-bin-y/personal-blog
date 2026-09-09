@@ -8,6 +8,7 @@ import com.byy.blogprojectbackend.category.service.CategoryService;
 import com.byy.blogprojectbackend.category.vo.CategoryAdminVO;
 import com.byy.blogprojectbackend.common.exception.ResourceNotFoundException;
 import com.byy.blogprojectbackend.common.exception.VersionConflictException;
+import com.byy.blogprojectbackend.common.enums.FilterStatus;
 import com.byy.blogprojectbackend.common.id.IdGenerator;
 import com.byy.blogprojectbackend.common.util.SlugUtils;
 import com.byy.blogprojectbackend.common.vo.PageVO;
@@ -104,9 +105,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     private String normalizeStatus(String status) {
-        String value = status == null ? "ALL" : status.toUpperCase();
-        if (!List.of("ALL", "ACTIVE", "DISABLED").contains(value)) throw new IllegalArgumentException("status 参数不正确");
-        return value;
+        return FilterStatus.parse(status).code();
     }
 
     private String trimToNull(String value) { return value == null || value.isBlank() ? null : value.trim(); }

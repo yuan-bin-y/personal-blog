@@ -34,7 +34,7 @@ public class AiRateLimiter {
             }
         } catch (RedisConnectionFailureException exception) {
             // Redis 短暂不可用时不应把公开搜索整体拖垮，但要留有可观测日志。
-            log.warn("AI rate limiter skipped because Redis is unavailable");
+            log.warn("Redis 不可用，本次跳过 AI 请求限流");
         }
     }
 }

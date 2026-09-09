@@ -122,7 +122,7 @@ public class SecurityConfig {
                         .hasAuthority(AuthorityConstants.Permission.SEARCH_REINDEX.getCode())
 
                         .requestMatchers("/api/owner/**")
-                        .hasRole("OWNER")
+                        .hasRole(AuthorityConstants.ROLE_CODE_OWNER)
 
                         .requestMatchers(
                                 HttpMethod.POST,

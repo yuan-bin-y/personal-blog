@@ -23,7 +23,7 @@ public class ScheduledPostPublishJob {
             try {
                 itemService.publishScheduledOne(post.getId());
             } catch (RuntimeException exception) {
-                log.error("Scheduled post publication failed, postId={}", post.getId(), exception);
+                log.error("定时内容发布失败，postId={}", post.getId(), exception);
             }
         }
     }

@@ -67,13 +67,13 @@ public class SearchReindexWorker {
             aliasSwitched = true;
             taskMapper.markSucceeded(taskId, indexedCount);
         } catch (Exception exception) {
-            log.error("Search reindex failed, taskId={}", taskId, exception);
+            log.error("搜索索引重建失败，taskId={}", taskId, exception);
             taskMapper.markFailed(taskId, truncate(exception.getMessage()));
             if (!aliasSwitched) {
                 try {
                     elasticsearchGateway.deleteIndex(newIndex);
                 } catch (Exception cleanupException) {
-                    log.warn("Failed to cleanup incomplete search index {}", newIndex);
+                    log.warn("未能清理未完成的搜索索引：{}", newIndex);
                 }
             }
         }

@@ -3,6 +3,7 @@ package com.byy.blogprojectbackend.search.service.impl;
 import com.byy.blogprojectbackend.common.vo.PageVO;
 import com.byy.blogprojectbackend.post.service.PostService;
 import com.byy.blogprojectbackend.post.vo.PostSummaryVO;
+import com.byy.blogprojectbackend.post.enums.PostTypeFilter;
 import com.byy.blogprojectbackend.search.ai.AiAnswerClient;
 import com.byy.blogprojectbackend.search.ai.AiRateLimiter;
 import com.byy.blogprojectbackend.search.config.AiProperties;
@@ -64,7 +65,7 @@ public class SearchServiceImpl implements SearchService {
         aiRateLimiter.check(clientKey);
         SearchPage result = elasticsearchGateway.search(new SearchQuery(
                 dto.question().trim(),
-                "ALL",
+                PostTypeFilter.ALL.code(),
                 null,
                 null,
                 1,

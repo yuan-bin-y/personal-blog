@@ -104,7 +104,7 @@ public class SseConnectionRegistry {
         try {
             emitter.completeWithError(exception);
         } catch (RuntimeException completionException) {
-            log.debug("SSE connection already completed, userId={}", userId);
+            log.debug("SSE 连接已经结束，userId={}", userId);
         }
     }
 

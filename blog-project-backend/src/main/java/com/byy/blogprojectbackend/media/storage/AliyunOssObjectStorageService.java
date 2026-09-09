@@ -3,6 +3,7 @@ package com.byy.blogprojectbackend.media.storage;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.byy.blogprojectbackend.media.config.MediaStorageProperties;
+import com.byy.blogprojectbackend.media.enums.MediaStorageProvider;
 import com.byy.blogprojectbackend.media.exception.MediaStorageException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -12,7 +13,11 @@ import java.io.InputStream;
 
 @Service
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "app.media", name = "storage-provider", havingValue = "aliyun-oss")
+@ConditionalOnProperty(
+        prefix = "app.media",
+        name = "storage-provider",
+        havingValue = MediaStorageProvider.ALIYUN_OSS_CODE
+)
 public class AliyunOssObjectStorageService implements ObjectStorageService {
 
     private final OSS ossClient;
@@ -20,7 +25,7 @@ public class AliyunOssObjectStorageService implements ObjectStorageService {
 
     @Override
     public String provider() {
-        return "aliyun-oss";
+        return MediaStorageProvider.ALIYUN_OSS.code();
     }
 
     @Override

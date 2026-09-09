@@ -29,4 +29,9 @@ public enum ApiErrorCode {
     ApiErrorCode(String message) {
         this.message = message;
     }
+
+    /** API 对外使用的稳定错误编码。 */
+    public String code() {
+        return name();
+    }
 }

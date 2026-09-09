@@ -4,6 +4,7 @@ import com.byy.blogprojectbackend.auth.token.JwtTokenService;
 import com.byy.blogprojectbackend.common.result.Result;
 import com.byy.blogprojectbackend.common.vo.PageVO;
 import com.byy.blogprojectbackend.post.dto.*;
+import com.byy.blogprojectbackend.post.enums.PostTypeFilter;
 import com.byy.blogprojectbackend.post.service.OwnerAdvancedPostService;
 import com.byy.blogprojectbackend.post.vo.*;
 import jakarta.validation.Valid;
@@ -82,7 +83,8 @@ public class OwnerAdvancedPostController {
 
     @GetMapping("/trash")
     public Result<PageVO<PostSummaryVO>> trash(
-            @RequestParam(defaultValue = "ALL") @Pattern(regexp = "ALL|TECH|MOMENT") String type,
+            @RequestParam(defaultValue = PostTypeFilter.DEFAULT_CODE)
+            @Pattern(regexp = PostTypeFilter.VALIDATION_PATTERN, message = PostTypeFilter.VALIDATION_MESSAGE) String type,
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "10") @Min(1) @Max(50) int pageSize
     ) {

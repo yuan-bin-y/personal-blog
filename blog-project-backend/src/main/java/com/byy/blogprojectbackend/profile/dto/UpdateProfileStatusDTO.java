@@ -9,13 +9,13 @@ import jakarta.validation.constraints.Size;
  */
 public record UpdateProfileStatusDTO(
 
-        @Size(max = 64)
+        @Size(max = 64, message = "状态标签不能超过 64 个字符")
         String label,
 
-        @Size(max = 255)
+        @Size(max = 255, message = "状态内容不能超过 255 个字符")
         String text,
 
-        @Size(max = 32)
+        @Size(max = 32, message = "状态表情不能超过 32 个字符")
         String emoji
 ) {
 }

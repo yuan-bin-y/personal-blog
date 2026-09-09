@@ -21,10 +21,13 @@ public record Result<T>(
         String traceId
 ) {
 
+    public static final String SUCCESS_CODE = "OK";
+    public static final String SUCCESS_MESSAGE = "success";
+
     public static <T> Result<T> success(T data) {
         return new Result<>(
-                "OK",
-                "success",
+                SUCCESS_CODE,
+                SUCCESS_MESSAGE,
                 data,
                 UUID.randomUUID().toString()
         );
@@ -32,7 +35,7 @@ public record Result<T>(
 
     public static Result<Void> failure(ApiErrorCode code, String message) {
         return new Result<>(
-                code.name(),
+                code.code(),
                 message,
                 null,
                 UUID.randomUUID().toString()
@@ -43,7 +46,7 @@ public record Result<T>(
             Map<String, String> fieldErrors
     ) {
         return new Result<>(
-                ApiErrorCode.BAD_REQUEST.name(),
+                ApiErrorCode.BAD_REQUEST.code(),
                 "请求参数不正确",
                 Map.copyOf(fieldErrors),
                 UUID.randomUUID().toString()

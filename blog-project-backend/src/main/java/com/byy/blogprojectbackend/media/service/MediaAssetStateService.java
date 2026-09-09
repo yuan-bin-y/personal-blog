@@ -3,6 +3,7 @@ package com.byy.blogprojectbackend.media.service;
 import com.byy.blogprojectbackend.common.exception.ResourceConflictException;
 import com.byy.blogprojectbackend.common.exception.ResourceNotFoundException;
 import com.byy.blogprojectbackend.media.entity.MediaAsset;
+import com.byy.blogprojectbackend.media.enums.MediaStatus;
 import com.byy.blogprojectbackend.media.mapper.MediaAssetMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -46,8 +47,8 @@ public class MediaAssetStateService {
         if (asset == null || Boolean.TRUE.equals(asset.getDeleted())) {
             throw new ResourceNotFoundException("媒体不存在");
         }
-        if (!"ACTIVE".equals(asset.getStatus())
-                && !"DELETE_FAILED".equals(asset.getStatus())) {
+        if (!MediaStatus.ACTIVE.matches(asset.getStatus())
+                && !MediaStatus.DELETE_FAILED.matches(asset.getStatus())) {
             throw new ResourceConflictException("媒体当前状态不允许删除");
         }
         if (asset.getUrl() != null && mediaAssetMapper.countReferences(asset.getUrl()) > 0) {
@@ -56,7 +57,7 @@ public class MediaAssetStateService {
         if (mediaAssetMapper.markDeleting(mediaId, ownerId) != 1) {
             throw new ResourceConflictException("媒体状态已经发生变化");
         }
-        asset.setStatus("DELETING");
+        asset.setStatus(MediaStatus.DELETING.code());
         asset.setDeletedBy(ownerId);
         return asset;
     }
@@ -87,7 +88,7 @@ public class MediaAssetStateService {
     }
 
     private String normalizeError(String error) {
-        String value = error == null || error.isBlank() ? "unknown storage error" : error;
+        String value = error == null || error.isBlank() ? "对象存储返回未知错误" : error;
         return value.length() <= 1000 ? value : value.substring(0, 1000);
     }
 }

@@ -6,6 +6,9 @@ import com.byy.blogprojectbackend.post.mapper.PostMapper;
 import com.byy.blogprojectbackend.post.mapper.projection.PostFeedRow;
 import com.byy.blogprojectbackend.post.mapper.projection.PostMediaRow;
 import com.byy.blogprojectbackend.post.mapper.projection.PostTagRow;
+import com.byy.blogprojectbackend.post.enums.PostMediaUsage;
+import com.byy.blogprojectbackend.post.enums.PostStatus;
+import com.byy.blogprojectbackend.post.enums.PostType;
 import com.byy.blogprojectbackend.post.service.PostService;
 import com.byy.blogprojectbackend.post.vo.*;
 import lombok.RequiredArgsConstructor;
@@ -25,11 +28,6 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class PostServiceImpl implements PostService {
-
-    private static final String TECH = "TECH";
-    private static final String MOMENT = "MOMENT";
-    private static final String COVER = "COVER";
-    private static final String CONTENT = "CONTENT";
 
     private final PostMapper postMapper;
 
@@ -62,7 +60,7 @@ public class PostServiceImpl implements PostService {
             int pageSize
     ) {
         return getPublicPosts(
-                TECH,
+                PostType.TECH.code(),
                 normalizeSlug(categorySlug),
                 normalizeSlug(tagSlug),
                 page,
@@ -333,8 +331,8 @@ public class PostServiceImpl implements PostService {
             List<TagVO> tags,
             List<MediaVO> media
     ) {
-        boolean tech = TECH.equals(row.getType());
-        boolean moment = MOMENT.equals(row.getType());
+        boolean tech = PostType.TECH.matches(row.getType());
+        boolean moment = PostType.MOMENT.matches(row.getType());
 
         PostAuthorVO author = new PostAuthorVO(
                 String.valueOf(row.getAuthorUserId()),
@@ -361,7 +359,7 @@ public class PostServiceImpl implements PostService {
         if (tech) {
             cover = media.stream()
                     .filter(item ->
-                            COVER.equals(item.usageType())
+                            PostMediaUsage.COVER.matches(item.usageType())
                     )
                     .findFirst()
                     .orElse(null);
@@ -372,7 +370,7 @@ public class PostServiceImpl implements PostService {
         if (moment) {
             images = media.stream()
                     .filter(item ->
-                            CONTENT.equals(item.usageType())
+                            PostMediaUsage.CONTENT.matches(item.usageType())
                     )
                     .toList();
         } else {
@@ -401,7 +399,7 @@ public class PostServiceImpl implements PostService {
                 tech ? row.getReadingTime() : null,
 
                 // Visitor 只能查到已发布内容。
-                "PUBLISHED",
+                PostStatus.PUBLISHED.code(),
 
                 row.getLikeCount(),
                 false,

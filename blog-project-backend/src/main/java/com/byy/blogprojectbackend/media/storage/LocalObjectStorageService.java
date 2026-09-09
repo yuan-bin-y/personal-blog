@@ -1,6 +1,7 @@
 package com.byy.blogprojectbackend.media.storage;
 
 import com.byy.blogprojectbackend.media.config.MediaStorageProperties;
+import com.byy.blogprojectbackend.media.enums.MediaStorageProvider;
 import com.byy.blogprojectbackend.media.exception.MediaStorageException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -12,7 +13,12 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
 @Service
-@ConditionalOnProperty(prefix = "app.media", name = "storage-provider", havingValue = "local", matchIfMissing = true)
+@ConditionalOnProperty(
+        prefix = "app.media",
+        name = "storage-provider",
+        havingValue = MediaStorageProvider.LOCAL_CODE,
+        matchIfMissing = true
+)
 public class LocalObjectStorageService implements ObjectStorageService {
 
     private final MediaStorageProperties properties;
@@ -25,7 +31,7 @@ public class LocalObjectStorageService implements ObjectStorageService {
 
     @Override
     public String provider() {
-        return "local";
+        return MediaStorageProvider.LOCAL.code();
     }
 
     @Override

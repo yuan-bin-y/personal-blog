@@ -3,6 +3,8 @@ package com.byy.blogprojectbackend.post.service.impl;
 import com.byy.blogprojectbackend.common.exception.ResourceNotFoundException;
 import com.byy.blogprojectbackend.common.exception.VersionConflictException;
 import com.byy.blogprojectbackend.post.entity.Post;
+import com.byy.blogprojectbackend.post.enums.PostStatus;
+import com.byy.blogprojectbackend.post.enums.PostType;
 import com.byy.blogprojectbackend.post.mapper.PostAdvancedMapper;
 import com.byy.blogprojectbackend.post.mapper.PostMapper;
 import com.byy.blogprojectbackend.post.service.OwnerPostService;
@@ -14,7 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Executes one batch/scheduler item in its own transaction. */
+/** 在独立事务中执行单条批处理或定时发布任务，避免一条失败回滚整批数据。 */
 @Service
 @RequiredArgsConstructor
 public class OwnerAdvancedPostItemService {
@@ -30,7 +32,7 @@ public class OwnerAdvancedPostItemService {
         if (post.getVersion() != version) {
             throw new VersionConflictException("内容已被其他请求修改，请刷新后重试");
         }
-        if ("PUBLISHED".equals(post.getStatus())) {
+        if (PostStatus.PUBLISHED.matches(post.getStatus())) {
             return;
         }
         snapshotService.capture(post, ownerId);
@@ -46,7 +48,7 @@ public class OwnerAdvancedPostItemService {
         if (post.getVersion() != version) {
             throw new VersionConflictException("内容已被其他请求修改，请刷新后重试");
         }
-        if ("TECH".equals(post.getType())) {
+        if (PostType.TECH.matches(post.getType())) {
             ownerPostService.deleteTech(postId, version, ownerId);
         } else {
             ownerPostService.deleteMoment(postId, version, ownerId);
@@ -56,7 +58,7 @@ public class OwnerAdvancedPostItemService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean publishScheduledOne(Long postId) {
         Post post = require(postId, false);
-        if (!"SCHEDULED".equals(post.getStatus())) {
+        if (!PostStatus.SCHEDULED.matches(post.getStatus())) {
             return false;
         }
         snapshotService.capture(post, post.getUpdatedBy());

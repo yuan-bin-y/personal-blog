@@ -8,6 +8,7 @@ import com.byy.blogprojectbackend.site.dto.UpdateMusicDTO;
 import com.byy.blogprojectbackend.site.dto.UpdatePageMediaDTO;
 import com.byy.blogprojectbackend.site.dto.UpdateSiteBasicDTO;
 import com.byy.blogprojectbackend.site.entity.SiteConfig;
+import com.byy.blogprojectbackend.site.enums.SiteConfigKey;
 import com.byy.blogprojectbackend.site.mapper.SiteConfigMapper;
 import com.byy.blogprojectbackend.site.service.OwnerSiteService;
 import com.byy.blogprojectbackend.site.vo.AnnouncementVO;
@@ -386,7 +387,7 @@ public class OwnerSiteServiceImpl implements OwnerSiteService {
             return objectMapper.writeValueAsString(value);
         } catch (Exception exception) {
             throw new IllegalStateException(
-                    "Failed to serialize site JSON config",
+                    "站点 JSON 配置序列化失败",
                     exception
             );
         }
@@ -401,7 +402,7 @@ public class OwnerSiteServiceImpl implements OwnerSiteService {
 
         if (siteConfig == null) {
             throw new IllegalStateException(
-                    "PRIMARY site config does not exist"
+                    SiteConfigKey.PRIMARY.label() + "不存在，请先执行数据库初始化"
             );
         }
 
@@ -414,7 +415,7 @@ public class OwnerSiteServiceImpl implements OwnerSiteService {
     private void checkVersionConflict(int affectedRows) {
         if (affectedRows == 0) {
             throw new VersionConflictException(
-                    "Site config version conflict"
+                    "站点配置已被其他请求修改，请刷新后重试"
             );
         }
     }

@@ -7,6 +7,8 @@ import com.byy.blogprojectbackend.post.dto.CreateMomentDTO;
 import com.byy.blogprojectbackend.post.dto.CreateTechPostDTO;
 import com.byy.blogprojectbackend.post.dto.UpdateMomentDTO;
 import com.byy.blogprojectbackend.post.dto.UpdateTechPostDTO;
+import com.byy.blogprojectbackend.post.enums.PostStatusFilter;
+import com.byy.blogprojectbackend.post.enums.PostTypeFilter;
 import com.byy.blogprojectbackend.post.service.OwnerPostService;
 import com.byy.blogprojectbackend.post.vo.MomentDetailVO;
 import com.byy.blogprojectbackend.post.vo.PostSummaryVO;
@@ -35,10 +37,10 @@ public class OwnerPostController {
 
     @GetMapping
     public Result<PageVO<PostSummaryVO>> list(
-            @RequestParam(defaultValue = "ALL")
-            @Pattern(regexp = "ALL|TECH|MOMENT") String type,
-            @RequestParam(defaultValue = "ALL")
-            @Pattern(regexp = "ALL|DRAFT|SCHEDULED|PUBLISHED") String status,
+            @RequestParam(defaultValue = PostTypeFilter.DEFAULT_CODE)
+            @Pattern(regexp = PostTypeFilter.VALIDATION_PATTERN, message = PostTypeFilter.VALIDATION_MESSAGE) String type,
+            @RequestParam(defaultValue = PostStatusFilter.DEFAULT_CODE)
+            @Pattern(regexp = PostStatusFilter.VALIDATION_PATTERN, message = PostStatusFilter.VALIDATION_MESSAGE) String status,
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "10") @Min(1) @Max(50) int pageSize
     ) {

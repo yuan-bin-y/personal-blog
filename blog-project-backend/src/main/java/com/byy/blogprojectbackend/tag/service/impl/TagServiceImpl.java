@@ -1,6 +1,7 @@
 package com.byy.blogprojectbackend.tag.service.impl;
 
 import com.byy.blogprojectbackend.common.exception.ResourceNotFoundException;
+import com.byy.blogprojectbackend.common.enums.FilterStatus;
 import com.byy.blogprojectbackend.common.id.IdGenerator;
 import com.byy.blogprojectbackend.common.util.SlugUtils;
 import com.byy.blogprojectbackend.common.vo.PageVO;
@@ -21,33 +22,96 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class TagServiceImpl implements TagService {
+
     private final TagMapper tagMapper;
     private final IdGenerator idGenerator;
 
+    @Override
     public PageVO<TagVO> listPublic(boolean used, int page, int pageSize) {
-        long total=tagMapper.countPublic(used);
-        var items=tagMapper.selectPublic(used, offset(page,pageSize),pageSize).stream().map(this::toPublic).toList();
-        return page(items,page,pageSize,total);
+        long total = tagMapper.countPublic(used);
+        List<TagVO> items = tagMapper.selectPublic(used, offset(page, pageSize), pageSize)
+                .stream()
+                .map(this::toPublic)
+                .toList();
+        return page(items, page, pageSize, total);
     }
-    public PageVO<TagAdminVO> listOwner(String status,int page,int pageSize) {
-        String normalized=normalizeStatus(status); long total=tagMapper.countOwner(normalized);
-        var items=tagMapper.selectOwner(normalized,offset(page,pageSize),pageSize).stream().map(this::toAdmin).toList();
-        return page(items,page,pageSize,total);
+
+    @Override
+    public PageVO<TagAdminVO> listOwner(String status, int page, int pageSize) {
+        String normalized = FilterStatus.parse(status).code();
+        long total = tagMapper.countOwner(normalized);
+        List<TagAdminVO> items = tagMapper.selectOwner(normalized, offset(page, pageSize), pageSize)
+                .stream()
+                .map(this::toAdmin)
+                .toList();
+        return page(items, page, pageSize, total);
     }
-    @Transactional public TagAdminVO create(CreateTagDTO dto) {
-        Long id=idGenerator.nextId(); Tag tag=new Tag(); tag.setId(id); tag.setName(dto.name().trim());
-        tag.setSlug(SlugUtils.normalize(dto.slug(),"tag-"+id)); tagMapper.insert(tag); return toAdmin(require(id));
+
+    @Override
+    @Transactional
+    public TagAdminVO create(CreateTagDTO dto) {
+        Long id = idGenerator.nextId();
+        Tag tag = new Tag();
+        tag.setId(id);
+        tag.setName(dto.name().trim());
+        tag.setSlug(SlugUtils.normalize(dto.slug(), "tag-" + id));
+        tagMapper.insert(tag);
+        return toAdmin(require(id));
     }
-    @Transactional public TagAdminVO update(Long id,UpdateTagDTO dto) {
-        requireActive(id); Tag tag=new Tag(); tag.setId(id); tag.setName(dto.name().trim());
-        tag.setSlug(SlugUtils.normalize(dto.slug(),"tag-"+id)); tagMapper.updateActive(tag); return toAdmin(require(id));
+
+    @Override
+    @Transactional
+    public TagAdminVO update(Long id, UpdateTagDTO dto) {
+        requireActive(id);
+        Tag tag = new Tag();
+        tag.setId(id);
+        tag.setName(dto.name().trim());
+        tag.setSlug(SlugUtils.normalize(dto.slug(), "tag-" + id));
+        tagMapper.updateActive(tag);
+        return toAdmin(require(id));
     }
-    @Transactional public void delete(Long id) { requireActive(id); tagMapper.softDelete(id); }
-    private Tag require(Long id){Tag t=tagMapper.selectAnyById(id);if(t==null)throw new ResourceNotFoundException("标签不存在");return t;}
-    private void requireActive(Long id){if(Boolean.TRUE.equals(require(id).getDeleted()))throw new ResourceNotFoundException("标签不存在");}
-    private TagVO toPublic(Tag t){return new TagVO(String.valueOf(t.getId()),t.getName(),t.getSlug(),true);}
-    private TagAdminVO toAdmin(Tag t){return new TagAdminVO(String.valueOf(t.getId()),t.getName(),t.getSlug(),!Boolean.TRUE.equals(t.getDeleted()),t.getUpdatedAt().toInstant(ZoneOffset.UTC));}
-    private String normalizeStatus(String status){String v=status==null?"ALL":status.toUpperCase();if(!List.of("ALL","ACTIVE","DISABLED").contains(v))throw new IllegalArgumentException("status 参数不正确");return v;}
-    private long offset(int p,int s){return(long)(p-1)*s;}
-    private <T> PageVO<T> page(List<T> items,int p,int s,long total){long pages=(total+s-1)/s;return new PageVO<>(items,p,s,total,pages,p<pages);}
+
+    @Override
+    @Transactional
+    public void delete(Long id) {
+        requireActive(id);
+        tagMapper.softDelete(id);
+    }
+
+    private Tag require(Long id) {
+        Tag tag = tagMapper.selectAnyById(id);
+        if (tag == null) {
+            throw new ResourceNotFoundException("标签不存在");
+        }
+        return tag;
+    }
+
+    private void requireActive(Long id) {
+        if (Boolean.TRUE.equals(require(id).getDeleted())) {
+            throw new ResourceNotFoundException("标签不存在");
+        }
+    }
+
+    private TagVO toPublic(Tag tag) {
+        return new TagVO(String.valueOf(tag.getId()), tag.getName(), tag.getSlug(), true);
+    }
+
+    private TagAdminVO toAdmin(Tag tag) {
+        return new TagAdminVO(
+                String.valueOf(tag.getId()),
+                tag.getName(),
+                tag.getSlug(),
+                !Boolean.TRUE.equals(tag.getDeleted()),
+                tag.getUpdatedAt().toInstant(ZoneOffset.UTC)
+        );
+    }
+
+    private long offset(int page, int pageSize) {
+        return (long) (page - 1) * pageSize;
+    }
+
+    private <T> PageVO<T> page(List<T> items, int page, int pageSize, long total) {
+        long totalPages = (total + pageSize - 1) / pageSize;
+        return new PageVO<>(items, page, pageSize, total, totalPages, page < totalPages);
+    }
 }

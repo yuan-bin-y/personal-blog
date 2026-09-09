@@ -83,7 +83,7 @@ public class OpenAiCompatibleAnswerClient implements AiAnswerClient {
         } catch (AiUpstreamException exception) {
             throw exception;
         } catch (RestClientException exception) {
-            log.warn("AI upstream request failed: {}", exception.getClass().getSimpleName());
+            log.warn("AI 上游请求失败：{}", exception.getClass().getSimpleName());
             throw new AiUpstreamException("AI 服务暂时不可用", exception);
         }
     }

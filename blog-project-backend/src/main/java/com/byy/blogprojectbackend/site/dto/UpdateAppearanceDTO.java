@@ -1,5 +1,7 @@
 package com.byy.blogprojectbackend.site.dto;
 
+import com.byy.blogprojectbackend.site.enums.BackgroundMode;
+import com.byy.blogprojectbackend.site.enums.LayoutMode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -15,15 +17,15 @@ public record UpdateAppearanceDTO(
 
         @NotBlank(message = "布局模式不能为空")
         @Pattern(
-                regexp = "standard|immersive",
-                message = "布局模式只能是 standard 或 immersive"
+                regexp = LayoutMode.VALIDATION_PATTERN,
+                message = LayoutMode.VALIDATION_MESSAGE
         )
         String layoutMode,
 
         @NotBlank(message = "背景模式不能为空")
         @Pattern(
-                regexp = "video|wallpaper",
-                message = "背景模式只能是 video 或 wallpaper"
+                regexp = BackgroundMode.VALIDATION_PATTERN,
+                message = BackgroundMode.VALIDATION_MESSAGE
         )
         String backgroundMode,
 

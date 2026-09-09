@@ -11,6 +11,9 @@ import com.byy.blogprojectbackend.post.mapper.PostMapper;
 import com.byy.blogprojectbackend.post.mapper.projection.PostFeedRow;
 import com.byy.blogprojectbackend.post.mapper.projection.PostMediaRow;
 import com.byy.blogprojectbackend.post.mapper.projection.PostTagRow;
+import com.byy.blogprojectbackend.post.enums.PostMediaUsage;
+import com.byy.blogprojectbackend.post.enums.PostStatus;
+import com.byy.blogprojectbackend.post.enums.PostType;
 import com.byy.blogprojectbackend.post.vo.CategoryVO;
 import com.byy.blogprojectbackend.post.vo.MediaVO;
 import com.byy.blogprojectbackend.post.vo.PostAuthorVO;
@@ -183,8 +186,8 @@ public class LikeServiceImpl implements LikeService {
             List<TagVO> tags,
             List<MediaVO> media
     ) {
-        boolean tech = "TECH".equals(row.getType());
-        boolean moment = "MOMENT".equals(row.getType());
+        boolean tech = PostType.TECH.matches(row.getType());
+        boolean moment = PostType.MOMENT.matches(row.getType());
         PostAuthorVO author = new PostAuthorVO(
                 String.valueOf(row.getAuthorUserId()),
                 row.getAuthorName(),
@@ -204,13 +207,13 @@ public class LikeServiceImpl implements LikeService {
 
         MediaVO cover = tech
                 ? media.stream()
-                        .filter(item -> "COVER".equals(item.usageType()))
+                        .filter(item -> PostMediaUsage.COVER.matches(item.usageType()))
                         .findFirst()
                         .orElse(null)
                 : null;
         List<MediaVO> images = moment
                 ? media.stream()
-                        .filter(item -> "CONTENT".equals(item.usageType()))
+                        .filter(item -> PostMediaUsage.CONTENT.matches(item.usageType()))
                         .toList()
                 : List.of();
 
@@ -230,7 +233,7 @@ public class LikeServiceImpl implements LikeService {
                 toInstant(row.getUpdatedAt()),
                 toInstant(row.getPublishedAt()),
                 tech ? row.getReadingTime() : null,
-                "PUBLISHED",
+                PostStatus.PUBLISHED.code(),
                 row.getLikeCount(),
                 true,
                 row.getCommentCount(),

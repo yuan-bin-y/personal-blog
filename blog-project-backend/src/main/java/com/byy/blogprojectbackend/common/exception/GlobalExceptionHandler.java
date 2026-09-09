@@ -253,7 +253,7 @@ public class GlobalExceptionHandler {
     /** AI 提供方错误映射为 502，不暴露 API Key 或上游响应体。 */
     @ExceptionHandler(AiUpstreamException.class)
     public ResponseEntity<Result<Void>> handleAiUpstream(AiUpstreamException exception) {
-        log.warn("AI upstream unavailable: {}", exception.getMessage());
+        log.warn("AI 上游服务不可用：{}", exception.getMessage());
         return ResponseEntity
                 .status(HttpStatus.BAD_GATEWAY)
                 .body(Result.failure(ApiErrorCode.UPSTREAM_ERROR, exception.getMessage()));
@@ -262,7 +262,7 @@ public class GlobalExceptionHandler {
     /** 公开搜索契约使用 500 表示 Elasticsearch 不可用。 */
     @ExceptionHandler(SearchUpstreamException.class)
     public ResponseEntity<Result<Void>> handleSearchUpstream(SearchUpstreamException exception) {
-        log.error("Elasticsearch unavailable", exception);
+        log.error("Elasticsearch 搜索服务不可用", exception);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Result.failure(ApiErrorCode.INTERNAL_ERROR, "搜索服务暂时不可用"));
@@ -279,7 +279,7 @@ public class GlobalExceptionHandler {
         );
 
         log.error(
-                "Unhandled exception, traceId={}",
+                "未处理的服务器异常，traceId={}",
                 error.traceId(),
                 exception
         );

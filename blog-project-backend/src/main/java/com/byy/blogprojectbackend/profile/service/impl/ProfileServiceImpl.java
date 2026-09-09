@@ -4,6 +4,7 @@ import com.byy.blogprojectbackend.guestbook.mapper.GuestbookMapper;
 import com.byy.blogprojectbackend.common.exception.ResourceNotFoundException;
 import com.byy.blogprojectbackend.common.exception.VersionConflictException;
 import com.byy.blogprojectbackend.post.mapper.PostMapper;
+import com.byy.blogprojectbackend.post.enums.PostType;
 import com.byy.blogprojectbackend.profile.dto.UpdateProfileDTO;
 import com.byy.blogprojectbackend.profile.entity.SpaceProfile;
 import com.byy.blogprojectbackend.profile.mapper.SpaceProfileMapper;
@@ -18,9 +19,6 @@ import java.time.ZoneOffset;
 @RequiredArgsConstructor
 public class ProfileServiceImpl implements ProfileService {
 
-    private static final String TECH = "TECH";
-    private static final String MOMENT = "MOMENT";
-
     private final SpaceProfileMapper spaceProfileMapper;
     private final PostMapper postMapper;
     private final GuestbookMapper guestbookMapper;
@@ -33,7 +31,7 @@ public class ProfileServiceImpl implements ProfileService {
 
         if (profile == null) {
             throw new ResourceNotFoundException(
-                    "Owner profile does not exist"
+                    "Owner 资料不存在"
             );
         }
 
@@ -62,7 +60,7 @@ public class ProfileServiceImpl implements ProfileService {
         // 4. 更新失败，说明 version 不一致
         if (affectedRows == 0) {
             throw new VersionConflictException(
-                    "Profile version conflict"
+                    "个人资料已被其他请求修改，请刷新后重试"
             );
         }
 
@@ -72,16 +70,16 @@ public class ProfileServiceImpl implements ProfileService {
 
         if (updatedProfile == null) {
             throw new ResourceNotFoundException(
-                    "Owner profile does not exist"
+                    "Owner 资料不存在"
             );
         }
 
         // 6. 查询 ProfileVO 需要的统计数据
         int techPostCount =
-                postMapper.countPublishedByType(TECH);
+                postMapper.countPublishedByType(PostType.TECH.code());
 
         int momentCount =
-                postMapper.countPublishedByType(MOMENT);
+                postMapper.countPublishedByType(PostType.MOMENT.code());
 
         int guestbookCount =
                 guestbookMapper.countPublicTopLevel();

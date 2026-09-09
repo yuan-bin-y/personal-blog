@@ -27,7 +27,7 @@ public class NotificationEventListener {
         } catch (RuntimeException exception) {
             // 数据已经持久化，客户端可通过通知列表补偿，不能反向破坏主业务。
             log.warn(
-                    "Realtime notification delivery failed, notificationId={}",
+                    "实时通知投递失败，notificationId={}",
                     event.notificationId(),
                     exception
             );

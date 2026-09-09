@@ -91,7 +91,7 @@ public class AuthController {
         }
 
         throw new IllegalStateException(
-                "Unsupported authenticated principal"
+                "登录认证主体类型不受支持"
         );
     }
 

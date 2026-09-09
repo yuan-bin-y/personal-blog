@@ -4,6 +4,7 @@ import com.byy.blogprojectbackend.common.id.IdGenerator;
 import com.byy.blogprojectbackend.post.entity.Post;
 import com.byy.blogprojectbackend.post.entity.PostMedia;
 import com.byy.blogprojectbackend.post.entity.PostVersion;
+import com.byy.blogprojectbackend.post.enums.PostType;
 import com.byy.blogprojectbackend.post.mapper.PostAdvancedMapper;
 import com.byy.blogprojectbackend.post.model.PostSnapshot;
 import lombok.RequiredArgsConstructor;
@@ -71,7 +72,7 @@ public class PostVersionSnapshotService {
     }
 
     private String summary(Post post) {
-        String source = "TECH".equals(post.getType()) ? post.getTitle() : post.getContent();
+        String source = PostType.TECH.matches(post.getType()) ? post.getTitle() : post.getContent();
         String compact = source == null ? post.getType() : source.strip().replaceAll("\\s+", " ");
         int end = compact.offsetByCodePoints(0, Math.min(120, compact.codePointCount(0, compact.length())));
         return compact.substring(0, end);

@@ -38,7 +38,7 @@ public class RealtimeRedisSubscriber implements MessageListener {
             );
         } catch (Exception exception) {
             // Pub/Sub 没有确认机制，失败时仍可由通知列表和 Last-Event-ID 补偿。
-            log.warn("Invalid realtime Redis message ignored", exception);
+            log.warn("已忽略格式不正确的 Redis 实时通知消息", exception);
         }
     }
 }

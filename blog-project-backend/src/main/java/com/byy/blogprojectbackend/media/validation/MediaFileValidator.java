@@ -42,7 +42,7 @@ public class MediaFileValidator {
         DetectedMedia detected = detect(file);
         if (!ALLOWED_TYPES.get(usageType).contains(detected.mediaType())) {
             throw new UnsupportedMediaTypeException(
-                    usageType + " 不支持 " + detected.mediaType() + " 文件"
+                    usageType.label() + "不支持上传" + detected.mediaType().label() + "文件"
             );
         }
 

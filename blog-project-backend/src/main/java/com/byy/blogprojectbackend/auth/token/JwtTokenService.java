@@ -24,6 +24,8 @@ public class JwtTokenService {
     public static final String CLAIM_USER_ID = "uid";
     public static final String CLAIM_ROLE = "role";
     public static final String CLAIM_AUTHORITIES = "authorities";
+    public static final String TOKEN_TYPE = "Bearer";
+    public static final String JOSE_TYPE = "JWT";
 
     private final JwtEncoder jwtEncoder;
     private final JwtProperties jwtProperties;
@@ -77,7 +79,7 @@ public class JwtTokenService {
                 .build();
 
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256)
-                .type("JWT")
+                .type(JOSE_TYPE)
                 .build();
 
         String tokenValue = jwtEncoder.encode(

@@ -12,6 +12,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequiredArgsConstructor
 public class RealtimeServiceImpl implements RealtimeService {
 
+    private static final String INVALID_LAST_EVENT_ID = "Last-Event-ID 必须是正整数";
+
     private final SseConnectionRegistry registry;
     private final NotificationService notificationService;
     private final RealtimeProperties properties;
@@ -39,14 +41,15 @@ public class RealtimeServiceImpl implements RealtimeService {
         if (lastEventId == null || lastEventId.isBlank()) {
             return null;
         }
+        final long value;
         try {
-            long value = Long.parseLong(lastEventId.trim());
-            if (value <= 0) {
-                throw new NumberFormatException("non-positive");
-            }
-            return value;
+            value = Long.parseLong(lastEventId.trim());
         } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("Last-Event-ID 格式不正确");
+            throw new IllegalArgumentException(INVALID_LAST_EVENT_ID);
         }
+        if (value <= 0) {
+            throw new IllegalArgumentException(INVALID_LAST_EVENT_ID);
+        }
+        return value;
     }
 }

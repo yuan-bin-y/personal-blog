@@ -56,7 +56,7 @@ public class RedisFixedWindowRateLimiter {
             throw exception;
         } catch (DataAccessException exception) {
             // 限流是保护层，不应在 Redis 短暂抖动时把公开阅读和普通互动整体打挂。
-            log.warn("Redis rate limiter unavailable, scope={}", scope);
+            log.warn("Redis 限流器暂时不可用，scope={}", scope);
         }
     }
 
@@ -66,7 +66,7 @@ public class RedisFixedWindowRateLimiter {
                     .digest(value.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(bytes, 0, 12);
         } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
+            throw new IllegalStateException("当前运行环境不支持 SHA-256", exception);
         }
     }
 }

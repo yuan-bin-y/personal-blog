@@ -1,5 +1,7 @@
 package com.byy.blogprojectbackend.auth.vo;
 
+import com.byy.blogprojectbackend.user.enums.UserRole;
+
 import java.util.List;
 
 /** 当前访问者身份；匿名访问者也使用该结构返回 VISITOR。 */
@@ -14,7 +16,7 @@ public record IdentityVO(
     public static IdentityVO visitor() {
         return new IdentityVO(
                 false,
-                "VISITOR",
+                UserRole.VISITOR.code(),
                 null,
                 List.of()
         );

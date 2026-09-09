@@ -1,5 +1,7 @@
 package com.byy.blogprojectbackend.common.constant;
 
+import com.byy.blogprojectbackend.user.enums.UserRole;
+
 import java.util.List;
 
 /**
@@ -16,12 +18,13 @@ public final class AuthorityConstants {
     }
 
     /** 数据库和 API 使用的不带前缀角色编码。 */
-    public static final String ROLE_CODE_OWNER = "OWNER";
-    public static final String ROLE_CODE_VISITOR = "VISITOR";
+    public static final String ROLE_CODE_OWNER = UserRole.OWNER.code();
+    public static final String ROLE_CODE_VISITOR = UserRole.VISITOR.code();
 
     /** Spring Security GrantedAuthority 使用的带 ROLE_ 前缀角色。 */
-    public static final String ROLE_OWNER = "ROLE_" + ROLE_CODE_OWNER;
-    public static final String ROLE_VISITOR = "ROLE_" + ROLE_CODE_VISITOR;
+    public static final String SPRING_ROLE_PREFIX = "ROLE_";
+    public static final String ROLE_OWNER = SPRING_ROLE_PREFIX + ROLE_CODE_OWNER;
+    public static final String ROLE_VISITOR = SPRING_ROLE_PREFIX + ROLE_CODE_VISITOR;
 
     /**
      * 权限定义。

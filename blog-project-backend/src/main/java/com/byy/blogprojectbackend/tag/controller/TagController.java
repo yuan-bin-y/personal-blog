@@ -1,5 +1,6 @@
 package com.byy.blogprojectbackend.tag.controller;
 
+import com.byy.blogprojectbackend.common.enums.FilterStatus;
 import com.byy.blogprojectbackend.common.result.Result;
 import com.byy.blogprojectbackend.common.vo.PageVO;
 import com.byy.blogprojectbackend.post.vo.TagVO;
@@ -36,7 +37,7 @@ public class TagController {
 
     @GetMapping("/api/owner/tags")
     public Result<PageVO<TagAdminVO>> ownerList(
-            @RequestParam(defaultValue = "ALL") String status,
+            @RequestParam(defaultValue = FilterStatus.DEFAULT_CODE) String status,
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "10") @Min(1) @Max(50) int pageSize
     ) {

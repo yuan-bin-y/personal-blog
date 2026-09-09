@@ -11,8 +11,8 @@ import java.time.Duration;
 @Validated
 @ConfigurationProperties(prefix = "app.security.jwt")
 public record JwtProperties(
-        @NotBlank String issuer,
-        @NotNull Duration accessTokenTtl,
-        @NotBlank String secretBase64
+        @NotBlank(message = "JWT 签发方不能为空") String issuer,
+        @NotNull(message = "JWT 有效期不能为空") Duration accessTokenTtl,
+        @NotBlank(message = "JWT 密钥不能为空") String secretBase64
 ) {
 }

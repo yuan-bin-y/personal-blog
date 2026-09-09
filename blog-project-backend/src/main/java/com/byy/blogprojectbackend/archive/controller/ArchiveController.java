@@ -3,6 +3,7 @@ package com.byy.blogprojectbackend.archive.controller;
 import com.byy.blogprojectbackend.archive.service.ArchiveService;
 import com.byy.blogprojectbackend.archive.vo.ArchiveVO;
 import com.byy.blogprojectbackend.common.result.Result;
+import com.byy.blogprojectbackend.post.enums.PostTypeFilter;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
@@ -27,24 +28,24 @@ public class ArchiveController {
     @GetMapping
     public Result<ArchiveVO> getPublicArchive(
             @RequestParam(required = false)
-            @Min(value = 1970, message = "year 不能小于1970")
-            @Max(value = 9999, message = "year 不能大于9999")
+            @Min(value = 1970, message = "年份不能小于 1970")
+            @Max(value = 9999, message = "年份不能大于 9999")
             Integer year,
 
-            @RequestParam(defaultValue = "ALL")
+            @RequestParam(defaultValue = PostTypeFilter.DEFAULT_CODE)
             @Pattern(
-                    regexp = "ALL|TECH|MOMENT",
-                    message = "type 只能是 ALL、TECH 或 MOMENT"
+                    regexp = PostTypeFilter.VALIDATION_PATTERN,
+                    message = PostTypeFilter.VALIDATION_MESSAGE
             )
             String type,
 
             @RequestParam(defaultValue = "1")
-            @Min(value = 1, message = "page 不能小于1")
+            @Min(value = 1, message = "页码不能小于 1")
             int page,
 
             @RequestParam(defaultValue = "10")
-            @Min(value = 1, message = "pageSize 不能小于1")
-            @Max(value = 50, message = "pageSize 不能超过50")
+            @Min(value = 1, message = "每页条数不能小于 1")
+            @Max(value = 50, message = "每页条数不能超过 50")
             int pageSize
     ) {
         return Result.success(

@@ -4,11 +4,14 @@ import com.byy.blogprojectbackend.common.exception.ResourceConflictException;
 import com.byy.blogprojectbackend.common.exception.ResourceNotFoundException;
 import com.byy.blogprojectbackend.common.exception.VersionConflictException;
 import com.byy.blogprojectbackend.common.id.IdGenerator;
+import com.byy.blogprojectbackend.common.result.ApiErrorCode;
 import com.byy.blogprojectbackend.common.vo.PageVO;
 import com.byy.blogprojectbackend.post.dto.*;
 import com.byy.blogprojectbackend.post.entity.Post;
 import com.byy.blogprojectbackend.post.entity.PostAutosave;
 import com.byy.blogprojectbackend.post.entity.PostMedia;
+import com.byy.blogprojectbackend.post.enums.PostStatus;
+import com.byy.blogprojectbackend.post.enums.PostType;
 import com.byy.blogprojectbackend.post.mapper.PostAdvancedMapper;
 import com.byy.blogprojectbackend.post.mapper.PostMapper;
 import com.byy.blogprojectbackend.post.mapper.projection.PostFeedRow;
@@ -62,7 +65,7 @@ public class OwnerAdvancedPostServiceImpl implements OwnerAdvancedPostService {
     public PostSummaryVO schedule(Long postId, SchedulePostDTO dto, Long ownerId) {
         Post post = require(postId, false);
         requireVersion(post, dto.version());
-        if ("PUBLISHED".equals(post.getStatus())) {
+        if (PostStatus.PUBLISHED.matches(post.getStatus())) {
             throw new IllegalArgumentException("已发布内容不能直接改为定时发布，请先撤回为草稿");
         }
         snapshotService.capture(post, ownerId);
@@ -79,7 +82,7 @@ public class OwnerAdvancedPostServiceImpl implements OwnerAdvancedPostService {
     public PostSummaryVO cancelSchedule(Long postId, int version, Long ownerId) {
         Post post = require(postId, false);
         requireVersion(post, version);
-        if (!"SCHEDULED".equals(post.getStatus())) {
+        if (!PostStatus.SCHEDULED.matches(post.getStatus())) {
             throw new IllegalArgumentException("只有定时发布内容可以取消定时");
         }
         snapshotService.capture(post, ownerId);
@@ -203,8 +206,8 @@ public class OwnerAdvancedPostServiceImpl implements OwnerAdvancedPostService {
     @Transactional
     public TechDetailVO updateSlug(Long id, UpdateSlugDTO dto, Long ownerId) {
         Post post = require(id, false);
-        if (!"TECH".equals(post.getType())) {
-            throw new ResourceNotFoundException("TECH 内容不存在");
+        if (!PostType.TECH.matches(post.getType())) {
+            throw new ResourceNotFoundException(PostType.TECH.label() + "不存在");
         }
         requireVersion(post, dto.version());
         String slug = dto.slug().trim();
@@ -228,7 +231,9 @@ public class OwnerAdvancedPostServiceImpl implements OwnerAdvancedPostService {
     }
 
     private void validateAutosaveFields(AutosavePostDTO dto) {
-        Set<String> allowed = "TECH".equals(dto.type()) ? TECH_AUTOSAVE_FIELDS : MOMENT_AUTOSAVE_FIELDS;
+        Set<String> allowed = PostType.TECH.matches(dto.type())
+                ? TECH_AUTOSAVE_FIELDS
+                : MOMENT_AUTOSAVE_FIELDS;
         Set<String> unknown = new LinkedHashSet<>(dto.payload().keySet());
         unknown.removeAll(allowed);
         if (!unknown.isEmpty()) {
@@ -260,11 +265,11 @@ public class OwnerAdvancedPostServiceImpl implements OwnerAdvancedPostService {
     }
 
     private String errorCode(RuntimeException exception) {
-        if (exception instanceof VersionConflictException) return "VERSION_CONFLICT";
-        if (exception instanceof ResourceNotFoundException) return "RESOURCE_NOT_FOUND";
-        if (exception instanceof ResourceConflictException) return "RESOURCE_CONFLICT";
-        if (exception instanceof IllegalArgumentException) return "BAD_REQUEST";
-        return "INTERNAL_ERROR";
+        if (exception instanceof VersionConflictException) return ApiErrorCode.VERSION_CONFLICT.code();
+        if (exception instanceof ResourceNotFoundException) return ApiErrorCode.RESOURCE_NOT_FOUND.code();
+        if (exception instanceof ResourceConflictException) return ApiErrorCode.RESOURCE_CONFLICT.code();
+        if (exception instanceof IllegalArgumentException) return ApiErrorCode.BAD_REQUEST.code();
+        return ApiErrorCode.INTERNAL_ERROR.code();
     }
 
     private Post snapshotPost(Long id, PostSnapshot snapshot) {
@@ -308,7 +313,7 @@ public class OwnerAdvancedPostServiceImpl implements OwnerAdvancedPostService {
 
     private PostSummaryVO summary(Long id) {
         Post post = require(id, false);
-        return "TECH".equals(post.getType())
+        return PostType.TECH.matches(post.getType())
                 ? toSummary(ownerPostService.getTech(id))
                 : toSummary(ownerPostService.getMoment(id));
     }
@@ -328,7 +333,7 @@ public class OwnerAdvancedPostServiceImpl implements OwnerAdvancedPostService {
 
     private PostSummaryVO trashSummary(PostFeedRow row) {
         PostAuthorVO author = new PostAuthorVO(String.valueOf(row.getAuthorUserId()), row.getAuthorName(), row.getAuthorAvatar());
-        boolean tech = "TECH".equals(row.getType());
+        boolean tech = PostType.TECH.matches(row.getType());
         CategoryVO category = tech ? new CategoryVO(String.valueOf(row.getCategoryId()), row.getCategoryName(),
                 row.getCategorySlug(), row.getCategoryDescription(), !Boolean.TRUE.equals(row.getCategoryDeleted())) : null;
         return new PostSummaryVO(String.valueOf(row.getId()), row.getType(), row.getSlug(), row.getTitle(),

@@ -1,5 +1,6 @@
 package com.byy.blogprojectbackend.search.controller;
 
+import com.byy.blogprojectbackend.common.validation.ValidationPatterns;
 import com.byy.blogprojectbackend.auth.token.JwtTokenService;
 import com.byy.blogprojectbackend.common.result.Result;
 import com.byy.blogprojectbackend.search.service.SearchReindexService;
@@ -34,7 +35,7 @@ public class OwnerSearchController {
     @GetMapping("/api/owner/search/reindex/{taskId}")
     public Result<ReindexTaskVO> get(
             @PathVariable
-            @Pattern(regexp = "[a-f0-9]{32}", message = "taskId 格式不正确")
+            @Pattern(regexp = ValidationPatterns.REINDEX_TASK_ID, message = "重建索引任务 ID 格式不正确")
             String taskId
     ) {
         return Result.success(reindexService.get(taskId));

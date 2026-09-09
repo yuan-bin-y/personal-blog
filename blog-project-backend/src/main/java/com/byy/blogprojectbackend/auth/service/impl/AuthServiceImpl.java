@@ -17,6 +17,8 @@ import com.byy.blogprojectbackend.common.id.IdGenerator;
 import com.byy.blogprojectbackend.profile.entity.SpaceProfile;
 import com.byy.blogprojectbackend.profile.mapper.SpaceProfileMapper;
 import com.byy.blogprojectbackend.user.entity.SpaceUser;
+import com.byy.blogprojectbackend.user.enums.UserRole;
+import com.byy.blogprojectbackend.user.enums.UserStatus;
 import com.byy.blogprojectbackend.user.mapper.SpaceUserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
@@ -73,7 +75,7 @@ public class AuthServiceImpl implements AuthService {
         user.setUsername(username);
         user.setPasswordHash(passwordEncoder.encode(registerDTO.password()));
         user.setRole(AuthorityConstants.ROLE_CODE_VISITOR);
-        user.setStatus("ACTIVE");
+        user.setStatus(UserStatus.ACTIVE.code());
 
         SpaceProfile profile = new SpaceProfile();
         profile.setId(idGenerator.nextId());
@@ -82,14 +84,14 @@ public class AuthServiceImpl implements AuthService {
 
         try {
             if (spaceUserMapper.insert(user) != 1) {
-                throw new IllegalStateException("Visitor account insert failed");
+                throw new IllegalStateException("访客账号创建失败");
             }
         } catch (DuplicateKeyException exception) {
             // 预查询不能消除并发注册竞争，唯一索引才是最终防线。
             throw new ResourceConflictException("用户名已存在");
         }
         if (spaceProfileMapper.insert(profile) != 1) {
-            throw new IllegalStateException("Visitor profile insert failed");
+            throw new IllegalStateException("访客资料创建失败");
         }
 
         SpaceUserPrincipal principal = new SpaceUserPrincipal(
@@ -130,7 +132,7 @@ public class AuthServiceImpl implements AuthService {
 
         if (!(principalObject instanceof SpaceUserPrincipal principal)) {
             throw new IllegalStateException(
-                    "Unsupported authenticated principal"
+                    "登录认证主体类型不受支持"
             );
         }
 
@@ -190,9 +192,8 @@ public class AuthServiceImpl implements AuthService {
             List<String> permissions,
             SpaceProfile knownProfile
     ) {
-        if (!AuthorityConstants.ROLE_CODE_OWNER.equals(role)
-                && !AuthorityConstants.ROLE_CODE_VISITOR.equals(role)) {
-            throw new IllegalStateException("Unsupported user role: " + role);
+        if (!UserRole.OWNER.matches(role) && !UserRole.VISITOR.matches(role)) {
+            throw new IllegalStateException("不受支持的用户角色：" + role);
         }
 
         SpaceProfile profile = knownProfile != null
@@ -224,7 +225,7 @@ public class AuthServiceImpl implements AuthService {
     ) {
         return new OwnerLoginVO(
                 issuedToken.value(),
-                "Bearer",
+                JwtTokenService.TOKEN_TYPE,
                 issuedToken.expiresInSeconds(),
                 identity
         );
@@ -239,7 +240,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return authorities.stream()
-                .filter(authority -> !authority.startsWith("ROLE_"))
+                .filter(authority -> !authority.startsWith(AuthorityConstants.SPRING_ROLE_PREFIX))
                 .toList();
     }
 }

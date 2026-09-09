@@ -2,9 +2,11 @@ package com.byy.blogprojectbackend.site.service.impl;
 
 import com.byy.blogprojectbackend.guestbook.mapper.GuestbookMapper;
 import com.byy.blogprojectbackend.post.mapper.PostMapper;
+import com.byy.blogprojectbackend.post.enums.PostType;
 import com.byy.blogprojectbackend.profile.entity.SpaceProfile;
 import com.byy.blogprojectbackend.profile.mapper.SpaceProfileMapper;
 import com.byy.blogprojectbackend.site.entity.SiteConfig;
+import com.byy.blogprojectbackend.site.enums.SiteConfigKey;
 import com.byy.blogprojectbackend.site.mapper.SiteConfigMapper;
 import com.byy.blogprojectbackend.site.service.SiteService;
 import com.byy.blogprojectbackend.site.vo.*;
@@ -23,10 +25,6 @@ import java.time.ZoneOffset;
 @RequiredArgsConstructor
 public class SiteServiceImpl implements SiteService {
 
-    //避免字符串到处硬编码
-    private static final String TECH = "TECH";
-    private static final String MOMENT = "MOMENT";
-
     private final SiteConfigMapper siteConfigMapper;
     private final SpaceProfileMapper spaceProfileMapper;
     private final PostMapper postMapper;
@@ -43,22 +41,22 @@ public class SiteServiceImpl implements SiteService {
         SiteConfig config = siteConfigMapper.selectPrimary();
 
         if (config == null) {
-            throw new IllegalStateException("PRIMARY site config does not exist");
+            throw new IllegalStateException(SiteConfigKey.PRIMARY.label() + "不存在，请先执行数据库初始化");
         }
 
         // 2. 获取站长资料
         SpaceProfile profile = spaceProfileMapper.selectOwnerProfile();
 
         if (profile == null) {
-            throw new IllegalStateException("Owner profile does not exist");
+            throw new IllegalStateException("空间主人资料不存在，请先执行数据库初始化");
         }
 
         // 3. 获取公开内容统计
         int techPostCount =
-                postMapper.countPublishedByType(TECH);
+                postMapper.countPublishedByType(PostType.TECH.code());
 
         int momentCount =
-                postMapper.countPublishedByType(MOMENT);
+                postMapper.countPublishedByType(PostType.MOMENT.code());
 
         int guestbookCount =
                 guestbookMapper.countPublicTopLevel();
@@ -242,8 +240,7 @@ public class SiteServiceImpl implements SiteService {
 
         if (json == null || json.isBlank()) {
             throw new IllegalStateException(
-                    "Site JSON config has not been initialized: "
-                            + targetType.getSimpleName()
+                    "站点 JSON 配置尚未初始化：" + targetType.getSimpleName()
             );
         }
 
@@ -254,8 +251,7 @@ public class SiteServiceImpl implements SiteService {
             );
         } catch (Exception e) {
             throw new IllegalStateException(
-                    "Invalid site JSON config: "
-                            + targetType.getSimpleName(),
+                    "站点 JSON 配置格式不正确：" + targetType.getSimpleName(),
                     e
             );
         }

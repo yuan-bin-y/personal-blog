@@ -1,6 +1,8 @@
 package com.byy.blogprojectbackend.auth.principal;
 
 import com.byy.blogprojectbackend.common.constant.AuthorityConstants;
+import com.byy.blogprojectbackend.user.enums.UserRole;
+import com.byy.blogprojectbackend.user.enums.UserStatus;
 import org.springframework.security.core.CredentialsContainer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -47,7 +49,7 @@ public class SpaceUserPrincipal
     }
 
     public List<String> getPermissionNames() {
-        if (AuthorityConstants.ROLE_CODE_OWNER.equals(role)) {
+        if (UserRole.OWNER.matches(role)) {
             return AuthorityConstants.OWNER_PERMISSIONS;
         }
 
@@ -58,7 +60,7 @@ public class SpaceUserPrincipal
     public Collection<? extends GrantedAuthority> getAuthorities() {
         List<GrantedAuthority> authorities = new ArrayList<>();
 
-        if (AuthorityConstants.ROLE_CODE_OWNER.equals(role)) {
+        if (UserRole.OWNER.matches(role)) {
             authorities.add(
                     new SimpleGrantedAuthority(
                             AuthorityConstants.ROLE_OWNER
@@ -68,14 +70,14 @@ public class SpaceUserPrincipal
             AuthorityConstants.OWNER_PERMISSIONS.stream()
                     .map(SimpleGrantedAuthority::new)
                     .forEach(authorities::add);
-        } else if (AuthorityConstants.ROLE_CODE_VISITOR.equals(role)) {
+        } else if (UserRole.VISITOR.matches(role)) {
             authorities.add(
                     new SimpleGrantedAuthority(
                             AuthorityConstants.ROLE_VISITOR
                     )
             );
         } else {
-            throw new IllegalStateException("Unsupported user role: " + role);
+            throw new IllegalStateException("不受支持的用户角色：" + role);
         }
 
         return List.copyOf(authorities);
@@ -98,7 +100,7 @@ public class SpaceUserPrincipal
 
     @Override
     public boolean isAccountNonLocked() {
-        return !"LOCKED".equals(status);
+        return !UserStatus.LOCKED.matches(status);
     }
 
     @Override
@@ -108,7 +110,7 @@ public class SpaceUserPrincipal
 
     @Override
     public boolean isEnabled() {
-        return "ACTIVE".equals(status);
+        return UserStatus.ACTIVE.matches(status);
     }
 
     @Override

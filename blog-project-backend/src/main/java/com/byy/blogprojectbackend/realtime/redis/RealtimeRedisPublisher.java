@@ -33,10 +33,10 @@ public class RealtimeRedisPublisher {
                 deliverLocally(notificationId, recipientUserId);
             }
         } catch (DataAccessException exception) {
-            log.warn("Redis realtime publish unavailable, falling back to local SSE");
+            log.warn("Redis 实时通知发布不可用，已回退到本机 SSE");
             deliverLocally(notificationId, recipientUserId);
         } catch (Exception exception) {
-            throw new IllegalStateException("Realtime message serialization failed", exception);
+            throw new IllegalStateException("实时通知消息序列化失败", exception);
         }
     }
 

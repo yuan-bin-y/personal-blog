@@ -46,8 +46,8 @@ public class MediaServiceImpl implements MediaService {
 
         MediaAsset asset = new MediaAsset();
         asset.setId(mediaId);
-        asset.setMediaType(detected.mediaType().name());
-        asset.setUsageType(usageType.name());
+        asset.setMediaType(detected.mediaType().code());
+        asset.setUsageType(usageType.code());
         asset.setStorageProvider(storageService.provider());
         asset.setBucketName(storageService.bucketName());
         asset.setObjectKey(objectKey);
@@ -57,7 +57,7 @@ public class MediaServiceImpl implements MediaService {
         asset.setWidth(detected.width());
         asset.setHeight(detected.height());
         asset.setDurationSeconds(detected.durationSeconds());
-        asset.setStatus(MediaStatus.UPLOADING.name());
+        asset.setStatus(MediaStatus.UPLOADING.code());
         asset.setCreatedBy(ownerId);
         asset.setDeleted(false);
         stateService.createUploading(asset);
@@ -92,8 +92,8 @@ public class MediaServiceImpl implements MediaService {
             int page,
             int pageSize
     ) {
-        String type = mediaType == null ? null : mediaType.name();
-        String usage = usageType == null ? null : usageType.name();
+        String type = mediaType == null ? null : mediaType.code();
+        String usage = usageType == null ? null : usageType.code();
         long total = mediaAssetMapper.countActive(type, usage);
         long totalPages = (total + pageSize - 1) / pageSize;
 

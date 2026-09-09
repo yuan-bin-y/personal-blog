@@ -7,6 +7,7 @@ import com.byy.blogprojectbackend.search.gateway.ElasticsearchGateway;
 import com.byy.blogprojectbackend.search.gateway.SearchHit;
 import com.byy.blogprojectbackend.search.gateway.SearchPage;
 import com.byy.blogprojectbackend.search.gateway.SearchQuery;
+import com.byy.blogprojectbackend.post.enums.PostTypeFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpMethod;
@@ -56,7 +57,7 @@ public class RestElasticsearchGateway implements ElasticsearchGateway {
     @SuppressWarnings("unchecked")
     public SearchPage search(SearchQuery query) {
         List<Object> filters = new ArrayList<>();
-        if (!"ALL".equals(query.type())) {
+        if (!PostTypeFilter.ALL.matches(query.type())) {
             filters.add(Map.of("term", Map.of("type", query.type())));
         }
         if (hasText(query.categorySlug())) {
@@ -205,7 +206,7 @@ public class RestElasticsearchGateway implements ElasticsearchGateway {
                 try {
                     request(HttpMethod.DELETE, "/" + oldIndex, null, Map.class);
                 } catch (RuntimeException exception) {
-                    log.warn("Old search index cleanup failed: {}", oldIndex);
+                    log.warn("旧搜索索引清理失败：{}", oldIndex);
                 }
             }
         }
