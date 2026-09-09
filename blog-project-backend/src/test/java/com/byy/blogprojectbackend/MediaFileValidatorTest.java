@@ -62,4 +62,18 @@ class MediaFileValidatorTest {
                 () -> validator.validate(audio, MediaUsageType.MUSIC)
         );
     }
+
+    @Test
+    void validate_allowsImageAsMusicCover() throws Exception {
+        BufferedImage image = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(image, "png", output);
+        MockMultipartFile cover = new MockMultipartFile(
+                "file", "cover.png", "image/png", output.toByteArray()
+        );
+
+        DetectedMedia detected = validator.validate(cover, MediaUsageType.MUSIC);
+
+        assertEquals(MediaType.IMAGE, detected.mediaType());
+    }
 }

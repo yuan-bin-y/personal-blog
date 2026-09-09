@@ -1,8 +1,10 @@
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { getCategories, getTags } from '../../api/taxonomy'
 import { autosavePost, importMarkdown } from '../../api/posts'
 import { apiMessage } from '../../api/request'
+import MediaPicker from '../media/MediaPicker.vue'
+import MediaGalleryPicker from '../media/MediaGalleryPicker.vue'
 
 const props = defineProps({
   type: { type: String, required: true, validator: (value) => ['TECH', 'MOMENT'].includes(value) },
@@ -15,12 +17,17 @@ const tags = ref([])
 const error = ref('')
 const autosaveState = ref('')
 const importing = ref(false)
+const contentMediaUrl = ref('')
 let autosaveTimer
 let suppressAutosave = true
 const emptyDraft = () => props.type === 'TECH'
   ? { title: '', summary: '', categoryId: '', tagIds: [], cover: '', content: '', contentFormat: 'MARKDOWN', status: 'DRAFT' }
   : { content: '', images: '', status: 'PUBLISHED' }
 const draft = reactive(emptyDraft())
+const momentImages = computed({
+  get: () => draft.images.split(/\r?\n/).map((src) => src.trim()).filter(Boolean),
+  set: (urls) => { draft.images = urls.join('\n') },
+})
 
 watch(() => props.post, async (post) => {
   suppressAutosave = true
@@ -85,6 +92,13 @@ const handleMarkdown = async (event) => {
   finally { importing.value = false; event.target.value = '' }
 }
 
+const insertContentMedia = (asset) => {
+  const alt = asset.originalName?.replace(/\.[^.]+$/, '') || '正文图片'
+  const markdown = `![${alt}](${asset.url})`
+  draft.content = `${draft.content.trimEnd()}${draft.content.trim() ? '\n\n' : ''}${markdown}\n`
+  contentMediaUrl.value = ''
+}
+
 onBeforeUnmount(() => clearTimeout(autosaveTimer))
 
 onMounted(async () => {
@@ -104,7 +118,7 @@ onMounted(async () => {
 
 <template>
   <form class="owner-editor" @submit.prevent="submit">
-    <p class="owner-editor__notice">内容将保存到 BinSpace 数据库。媒体字段当前填写已有 URL。</p>
+    <p class="owner-editor__notice">内容保存到 BinSpace 数据库；图片会先上传到后端配置的 Local / OSS，成功后自动绑定到当前内容。</p>
     <p v-if="post?.status === 'SCHEDULED'" class="owner-editor__notice">这篇内容正在等待定时发布。保存正文后会先回到草稿，请在详情页重新设置发布时间。</p>
     <p v-if="post && autosaveState" class="owner-editor__autosave" aria-live="polite">{{ autosaveState }}</p>
     <p v-if="error" class="owner-editor__notice">{{ error }}</p>
@@ -113,13 +127,14 @@ onMounted(async () => {
       <label>标题<input v-model="draft.title" required maxlength="120" /></label>
       <label>摘要<textarea v-model="draft.summary" required rows="3" maxlength="320"></textarea></label>
       <div class="owner-editor__split"><label>分类<select v-model="draft.categoryId" required><option value="" disabled>请选择分类</option><option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label>标签<select v-model="draft.tagIds" multiple><option v-for="item in tags" :key="item.id" :value="item.id">{{ item.name }}</option></select></label></div>
-      <label>封面路径<input v-model="draft.cover" placeholder="/media/... 或远程 URL" /></label>
+      <MediaPicker v-model="draft.cover" usage-type="POST_COVER" media-type="IMAGE" label="文章封面" hint="选择图片后自动上传并回填，不需要复制 URL。" />
       <label>正文<textarea v-model="draft.content" required rows="12" placeholder="正文将保存到数据库"></textarea></label>
+      <MediaPicker v-if="draft.contentFormat === 'MARKDOWN'" v-model="contentMediaUrl" usage-type="POST_CONTENT" media-type="IMAGE" label="插入正文图片" hint="上传成功后自动把 Markdown 图片语法插入正文末尾。" @uploaded="insertContentMedia" />
       <div class="owner-editor__split"><label>正文格式<select v-model="draft.contentFormat"><option value="MARKDOWN">Markdown</option><option value="PLAIN_TEXT">纯文本</option></select></label><label>状态<select v-model="draft.status"><option value="DRAFT">草稿</option><option value="PUBLISHED">发布</option></select></label></div>
     </template>
     <template v-else>
       <label>说说内容<textarea v-model="draft.content" required rows="7" maxlength="2000"></textarea></label>
-      <label>图片路径<textarea v-model="draft.images" rows="4" placeholder="每行一个 Mock 路径，不做真实上传"></textarea></label>
+      <MediaGalleryPicker v-model="momentImages" :max="9" />
       <label>状态<select v-model="draft.status"><option value="DRAFT">草稿</option><option value="PUBLISHED">发布</option></select></label>
     </template>
     <footer><button type="button" @click="$emit('cancel')">取消</button><button class="owner-editor__primary" type="submit">{{ post ? '保存修改' : '保存内容' }}</button></footer>

@@ -1,6 +1,7 @@
 package com.byy.blogprojectbackend;
 
 import com.byy.blogprojectbackend.auth.token.RedisTokenSessionService;
+import com.byy.blogprojectbackend.common.ratelimit.RedisFixedWindowRateLimiter;
 import com.byy.blogprojectbackend.profile.entity.SpaceProfile;
 import com.byy.blogprojectbackend.profile.mapper.SpaceProfileMapper;
 import com.byy.blogprojectbackend.user.entity.SpaceUser;
@@ -48,6 +49,9 @@ class AuthControllerIntegrationTest {
 
     @MockitoBean
     private RedisTokenSessionService redisTokenSessionService;
+
+    @MockitoBean
+    private RedisFixedWindowRateLimiter rateLimiter;
 
     private String accessToken;
 

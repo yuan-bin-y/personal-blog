@@ -27,7 +27,8 @@ public class MediaFileValidator {
             MediaUsageType.HERO, EnumSet.of(MediaType.IMAGE, MediaType.VIDEO),
             MediaUsageType.POST_COVER, EnumSet.of(MediaType.IMAGE),
             MediaUsageType.POST_CONTENT, EnumSet.of(MediaType.IMAGE, MediaType.VIDEO),
-            MediaUsageType.MUSIC, EnumSet.of(MediaType.AUDIO),
+            // MUSIC 同时承载播放器音频和音乐封面；两者会在站点配置中分别保存 URL。
+            MediaUsageType.MUSIC, EnumSet.of(MediaType.IMAGE, MediaType.AUDIO),
             MediaUsageType.PAGE_BACKGROUND, EnumSet.of(MediaType.IMAGE, MediaType.VIDEO)
     );
 
