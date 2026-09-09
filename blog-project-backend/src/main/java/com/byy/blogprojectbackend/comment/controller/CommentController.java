@@ -7,6 +7,8 @@ import com.byy.blogprojectbackend.comment.service.CommentService;
 import com.byy.blogprojectbackend.comment.vo.CommentVO;
 import com.byy.blogprojectbackend.common.result.Result;
 import com.byy.blogprojectbackend.common.vo.PageVO;
+import com.byy.blogprojectbackend.common.ratelimit.RateLimitProperties;
+import com.byy.blogprojectbackend.common.ratelimit.RedisFixedWindowRateLimiter;
 import com.byy.blogprojectbackend.interaction.dto.ReplyDTO;
 import com.byy.blogprojectbackend.interaction.service.ReplyResult;
 import jakarta.validation.Valid;
@@ -27,6 +29,8 @@ import org.springframework.web.bind.annotation.*;
 public class CommentController {
 
     private final CommentService commentService;
+    private final RedisFixedWindowRateLimiter rateLimiter;
+    private final RateLimitProperties rateLimitProperties;
 
     @GetMapping("/api/posts/{postId}/comments")
     public Result<PageVO<CommentVO>> list(
@@ -50,10 +54,18 @@ public class CommentController {
             @Valid @RequestBody CreateCommentDTO dto,
             @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt
     ) {
+        Long userId = requiredUserId(jwt);
+        rateLimiter.check(
+                "interaction:comment",
+                userId.toString(),
+                rateLimitProperties.getInteractionPerMinute(),
+                java.time.Duration.ofMinutes(1),
+                "评论发布过于频繁，请稍后再试"
+        );
         CommentVO comment = commentService.create(
                 postId,
                 dto,
-                requiredUserId(jwt)
+                userId
         );
 
         return ResponseEntity

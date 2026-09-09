@@ -53,6 +53,7 @@ app:
     sse-timeout-ms: ${SSE_TIMEOUT_MS:1800000}
     heartbeat-ms: ${SSE_HEARTBEAT_MS:25000}
     replay-limit: ${SSE_REPLAY_LIMIT:100}
+    redis-channel: ${SSE_REDIS_CHANNEL:binspace:realtime:notifications}
   search:
     base-url: ${ELASTICSEARCH_URL:http://localhost:9200}
     username: ${ELASTICSEARCH_USERNAME:}
@@ -71,6 +72,13 @@ app:
   post:
     # 单实例 V1 定时发布轮询间隔；条件更新保证同一文章只会成功发布一次。
     schedule-check-ms: ${POST_SCHEDULE_CHECK_MS:30000}
+  rate-limit:
+    login-per-minute: ${RATE_LIMIT_LOGIN_PER_MINUTE:10}
+    register-per-hour: ${RATE_LIMIT_REGISTER_PER_HOUR:5}
+    interaction-per-minute: ${RATE_LIMIT_INTERACTION_PER_MINUTE:12}
+    like-per-minute: ${RATE_LIMIT_LIKE_PER_MINUTE:60}
+    media-upload-per-minute: ${RATE_LIMIT_MEDIA_UPLOAD_PER_MINUTE:20}
+    search-per-minute: ${RATE_LIMIT_SEARCH_PER_MINUTE:60}
 
 server:
   port: 8080

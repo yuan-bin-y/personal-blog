@@ -25,6 +25,7 @@ import com.byy.blogprojectbackend.media.exception.UnsupportedMediaTypeException;
 import com.byy.blogprojectbackend.search.exception.AiRateLimitException;
 import com.byy.blogprojectbackend.search.exception.AiUpstreamException;
 import com.byy.blogprojectbackend.search.exception.SearchUpstreamException;
+import com.byy.blogprojectbackend.common.ratelimit.RateLimitExceededException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -242,8 +243,8 @@ public class GlobalExceptionHandler {
     }
 
     /** 公开 AI 问答超过 Redis 限流窗口。 */
-    @ExceptionHandler(AiRateLimitException.class)
-    public ResponseEntity<Result<Void>> handleAiRateLimit(AiRateLimitException exception) {
+    @ExceptionHandler({AiRateLimitException.class, RateLimitExceededException.class})
+    public ResponseEntity<Result<Void>> handleRateLimit(RuntimeException exception) {
         return ResponseEntity
                 .status(HttpStatus.TOO_MANY_REQUESTS)
                 .body(Result.failure(ApiErrorCode.RATE_LIMITED, exception.getMessage()));

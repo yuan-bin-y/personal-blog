@@ -6,6 +6,9 @@ import com.byy.blogprojectbackend.auth.service.AuthService;
 import com.byy.blogprojectbackend.auth.vo.IdentityVO;
 import com.byy.blogprojectbackend.auth.vo.OwnerLoginVO;
 import com.byy.blogprojectbackend.common.result.Result;
+import com.byy.blogprojectbackend.common.ratelimit.RateLimitProperties;
+import com.byy.blogprojectbackend.common.ratelimit.RedisFixedWindowRateLimiter;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -31,12 +34,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final RedisFixedWindowRateLimiter rateLimiter;
+    private final RateLimitProperties rateLimitProperties;
 
     /** 注册 Visitor，并直接返回 JWT Access Token 与当前身份。 */
     @PostMapping("/register")
     public ResponseEntity<Result<OwnerLoginVO>> registerVisitor(
-            @Valid @RequestBody RegisterVisitorDTO registerDTO
+            @Valid @RequestBody RegisterVisitorDTO registerDTO,
+            HttpServletRequest request
     ) {
+        rateLimiter.check(
+                "auth:register",
+                request.getRemoteAddr(),
+                rateLimitProperties.getRegisterPerHour(),
+                java.time.Duration.ofHours(1),
+                "注册请求过于频繁，请稍后再试"
+        );
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(Result.success(authService.registerVisitor(registerDTO)));
@@ -45,8 +58,16 @@ public class AuthController {
     /** 使用用户名和密码登录 Visitor 或 Owner，返回 JWT 与当前身份。 */
     @PostMapping("/login")
     public Result<OwnerLoginVO> login(
-            @Valid @RequestBody OwnerLoginDTO loginDTO
+            @Valid @RequestBody OwnerLoginDTO loginDTO,
+            HttpServletRequest request
     ) {
+        rateLimiter.check(
+                "auth:login",
+                request.getRemoteAddr() + ":" + loginDTO.username().trim().toLowerCase(java.util.Locale.ROOT),
+                rateLimitProperties.getLoginPerMinute(),
+                java.time.Duration.ofMinutes(1),
+                "登录尝试过于频繁，请稍后再试"
+        );
         return Result.success(
                 authService.login(loginDTO)
         );

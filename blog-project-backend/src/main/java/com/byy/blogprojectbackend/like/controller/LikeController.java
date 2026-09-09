@@ -6,6 +6,8 @@ import com.byy.blogprojectbackend.common.vo.PageVO;
 import com.byy.blogprojectbackend.like.service.LikeService;
 import com.byy.blogprojectbackend.like.vo.LikeStateVO;
 import com.byy.blogprojectbackend.post.vo.PostSummaryVO;
+import com.byy.blogprojectbackend.common.ratelimit.RateLimitProperties;
+import com.byy.blogprojectbackend.common.ratelimit.RedisFixedWindowRateLimiter;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
@@ -26,6 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class LikeController {
 
     private final LikeService likeService;
+    private final RedisFixedWindowRateLimiter rateLimiter;
+    private final RateLimitProperties rateLimitProperties;
 
     /** 登录用户幂等点赞一个公开 Post。 */
     @PutMapping("/api/posts/{postId}/like")
@@ -33,10 +37,12 @@ public class LikeController {
             @PathVariable @Positive Long postId,
             @AuthenticationPrincipal Jwt jwt
     ) {
+        Long userId = requiredUserId(jwt);
+        checkLikeRate(userId);
         return Result.success(
                 likeService.like(
                         postId,
-                        requiredUserId(jwt)
+                        userId
                 )
         );
     }
@@ -47,8 +53,10 @@ public class LikeController {
             @PathVariable @Positive Long postId,
             @AuthenticationPrincipal Jwt jwt
     ) {
+        Long userId = requiredUserId(jwt);
+        checkLikeRate(userId);
         return Result.success(
-                likeService.unlike(postId, requiredUserId(jwt))
+                likeService.unlike(postId, userId)
         );
     }
 
@@ -69,6 +77,16 @@ public class LikeController {
                 jwt.getClaimAsString(
                         JwtTokenService.CLAIM_USER_ID
                 )
+        );
+    }
+
+    private void checkLikeRate(Long userId) {
+        rateLimiter.check(
+                "interaction:like",
+                userId.toString(),
+                rateLimitProperties.getLikePerMinute(),
+                java.time.Duration.ofMinutes(1),
+                "点赞操作过于频繁，请稍后再试"
         );
     }
 }

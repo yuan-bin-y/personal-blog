@@ -14,4 +14,5 @@ public class RealtimeProperties {
     private long timeoutMs = 30 * 60 * 1000L;
     private long heartbeatMs = 25_000L;
     private int replayLimit = 100;
+    private String redisChannel = "binspace:realtime:notifications";
 }

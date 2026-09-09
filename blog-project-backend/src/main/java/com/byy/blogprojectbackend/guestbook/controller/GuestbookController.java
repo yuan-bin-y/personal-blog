@@ -3,6 +3,8 @@ package com.byy.blogprojectbackend.guestbook.controller;
 import com.byy.blogprojectbackend.auth.token.JwtTokenService;
 import com.byy.blogprojectbackend.common.result.Result;
 import com.byy.blogprojectbackend.common.vo.PageVO;
+import com.byy.blogprojectbackend.common.ratelimit.RateLimitProperties;
+import com.byy.blogprojectbackend.common.ratelimit.RedisFixedWindowRateLimiter;
 import com.byy.blogprojectbackend.guestbook.dto.CreateGuestbookDTO;
 import com.byy.blogprojectbackend.guestbook.dto.UpdateGuestbookDTO;
 import com.byy.blogprojectbackend.guestbook.service.GuestbookService;
@@ -27,6 +29,8 @@ import org.springframework.web.bind.annotation.*;
 public class GuestbookController {
 
     private final GuestbookService guestbookService;
+    private final RedisFixedWindowRateLimiter rateLimiter;
+    private final RateLimitProperties rateLimitProperties;
 
     @GetMapping("/api/guestbook")
     public Result<PageVO<GuestbookVO>> list(
@@ -43,7 +47,15 @@ public class GuestbookController {
             @Valid @RequestBody CreateGuestbookDTO dto,
             @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt
     ) {
-        GuestbookVO entry = guestbookService.create(dto, requiredUserId(jwt));
+        Long userId = requiredUserId(jwt);
+        rateLimiter.check(
+                "interaction:guestbook",
+                userId.toString(),
+                rateLimitProperties.getInteractionPerMinute(),
+                java.time.Duration.ofMinutes(1),
+                "留言发布过于频繁，请稍后再试"
+        );
+        GuestbookVO entry = guestbookService.create(dto, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(Result.success(entry));
     }
 

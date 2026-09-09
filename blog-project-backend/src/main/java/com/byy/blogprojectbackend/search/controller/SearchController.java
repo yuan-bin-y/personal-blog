@@ -7,6 +7,8 @@ import com.byy.blogprojectbackend.search.dto.AiSearchDTO;
 import com.byy.blogprojectbackend.search.service.SearchService;
 import com.byy.blogprojectbackend.search.vo.AiSearchVO;
 import com.byy.blogprojectbackend.search.vo.SearchResultVO;
+import com.byy.blogprojectbackend.common.ratelimit.RateLimitProperties;
+import com.byy.blogprojectbackend.common.ratelimit.RedisFixedWindowRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -32,6 +34,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SearchController {
     private final SearchService searchService;
+    private final RedisFixedWindowRateLimiter rateLimiter;
+    private final RateLimitProperties rateLimitProperties;
 
     @GetMapping("/api/search")
     public Result<PageVO<SearchResultVO>> search(
@@ -42,7 +46,15 @@ public class SearchController {
             @RequestParam(required = false) @Size(max = 80) String tag,
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "10") @Min(1) @Max(50) int pageSize
+            , HttpServletRequest request
     ) {
+        rateLimiter.check(
+                "search:public",
+                request.getRemoteAddr(),
+                rateLimitProperties.getSearchPerMinute(),
+                java.time.Duration.ofMinutes(1),
+                "搜索请求过于频繁，请稍后再试"
+        );
         return Result.success(searchService.search(q, type, category, tag, page, pageSize));
     }
 

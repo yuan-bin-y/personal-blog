@@ -6,6 +6,8 @@ import com.byy.blogprojectbackend.common.vo.PageVO;
 import com.byy.blogprojectbackend.media.enums.MediaUsageType;
 import com.byy.blogprojectbackend.media.service.MediaService;
 import com.byy.blogprojectbackend.media.vo.MediaAssetVO;
+import com.byy.blogprojectbackend.common.ratelimit.RateLimitProperties;
+import com.byy.blogprojectbackend.common.ratelimit.RedisFixedWindowRateLimiter;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
@@ -31,6 +33,8 @@ import org.springframework.web.multipart.MultipartFile;
 public class MediaController {
 
     private final MediaService mediaService;
+    private final RedisFixedWindowRateLimiter rateLimiter;
+    private final RateLimitProperties rateLimitProperties;
 
     @PostMapping(
             value = "/api/owner/media",
@@ -41,10 +45,18 @@ public class MediaController {
             @RequestParam MediaUsageType usageType,
             @AuthenticationPrincipal Jwt jwt
     ) {
+        Long userId = requiredUserId(jwt);
+        rateLimiter.check(
+                "owner:media-upload",
+                userId.toString(),
+                rateLimitProperties.getMediaUploadPerMinute(),
+                java.time.Duration.ofMinutes(1),
+                "媒体上传过于频繁，请稍后再试"
+        );
         MediaAssetVO media = mediaService.upload(
                 file,
                 usageType,
-                requiredUserId(jwt)
+                userId
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(Result.success(media));
     }
